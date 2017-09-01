@@ -1,0 +1,168 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+resource 'PiPL' (16000) {
+	{	
+		
+		Kind {
+			AEEffect
+		},
+		
+		Name {
+			"Tl_Letterbox"
+		},
+		
+		Category {
+			"Tl"
+		},
+
+	
+		CodeWin64X86 {"EntryPointFunc"},
+	
+
+
+
+
+
+
+
+
+
+		
+		AE_PiPL_Version {
+			2,
+			0
+		},
+		
+		AE_Effect_Spec_Version {
+			13,
+			9
+		},
+		
+		AE_Effect_Version {
+			630274 
+		},
+		
+		AE_Effect_Info_Flags {
+			3
+		},
+		
+		AE_Effect_Global_OutFlags {
+			0x6000442
+		},
+		AE_Effect_Global_OutFlags_2 {
+			0x21448
+		},
+		
+		AE_Effect_Match_Name {
+			"Tl_letterbox"
+		},
+		
+		AE_Reserved_Info {
+			8						
+		}
+	}
+};
+
