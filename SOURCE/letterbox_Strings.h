@@ -30,6 +30,12 @@ typedef enum {
     
     StrID_SliderResizeName,
     
+    StrID_settings_Param_Name,
+    StrID_SizeSourceName,
+    StrID_SizeSourceChoices,
+    StrID_ForceSName,            
+    StrID_ForceSDescription,
+    
     
 	StrID_Err_LoadSuite,
 	StrID_Err_FreeSuite,

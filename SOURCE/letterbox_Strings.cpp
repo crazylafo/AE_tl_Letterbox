@@ -12,6 +12,7 @@ TableString		g_strs[StrID_NUMTYPES] = {
 	StrID_NONE,					"",
 	StrID_Name,					"tl_Letterbox",
 	StrID_Description,			"Generates a simple letterbox with specified ratio",
+    
 
 	StrID_ModeName,				"Mode",
 	StrID_ModeChoices,			"Preset|"
@@ -45,14 +46,23 @@ TableString		g_strs[StrID_NUMTYPES] = {
     
     StrID_ColorName,			"Fill scopes",
     
-    StrID_sample_Param_Name,    "transform Content",
+    StrID_sample_Param_Name,    "Transform Content",
     
     StrID_PointName,			"Center",
     
     StrID_SliderResizeName,     "Resize",
+    
+    StrID_settings_Param_Name,   "Settings",
+    
+    StrID_SizeSourceName,		"Source Size",
+    StrID_SizeSourceChoices,	"Layer|"
+                                "Composition",
+    StrID_ForceSName,             "Force the scale",
+    StrID_ForceSDescription,      "Force the layer to keep the full size",
+
 
 	
-	StrID_Err_LoadSuite,		"Couldn't acquire suite.", 
+	StrID_Err_LoadSuite,		"Couldn't acquire suite.",
 	StrID_Err_FreeSuite,		"Couldn't free suite.",
 
 	StrID_PresetNameDisabled,	"Preset Locked",

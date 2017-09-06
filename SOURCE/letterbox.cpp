@@ -22,7 +22,7 @@ About (
                                               "%s v%d.%d\r%s",
                                               STR(StrID_Name),
                                               MAJOR_VERSION,
-                                              MINOR_VERSION, 
+                                              MINOR_VERSION,
                                               STR(StrID_Description));
 	}
 	return err;
@@ -30,327 +30,6 @@ About (
 
 
 
-static void
-//DEFINE PRESETS RATIO IN BASIC UI
-GetModeValue(
-                    A_long			Mode,
-                    A_long          *ModeValue)
-{
-    switch (Mode) {
-        case MODE_BASIC:
-            *ModeValue = 0;
-            break;
-            
-        case MODE_ADVANCED:
-            *ModeValue = 1;
-            break;
-    }
-}
-
-
-static void
-//DEFINE PRESETS RATIO IN BASIC UI FOR SMART FX
-GetPresetRatioValue(
-	A_long			PRESET,
-	PF_FpLong		*presetratioF)
-{
-	switch (PRESET) {
-	case LETB_PRESET_FOT:
-		*presetratioF = 1.33;
-		break;
-
-	case LETB_PRESET_SON:
-		*presetratioF = 1.77;
-		break;
-
-	case LETB_PRESET_OHF:
-		*presetratioF = 1.85;
-		break;
-
-	case LETB_PRESET_TTF:
-		*presetratioF = 2.35;
-		break;
-	case LETB_PRESET_TTN:
-		*presetratioF = 2.39;
-		break;
-
-	case LETB_PRESET_TFZ:
-		*presetratioF = 2.40;
-		break;
-	}
-
-}
-
-//Get 8bits Pixel value at point (x,y). from the SDK documentation.
-
-static  PF_Pixel
-*sampleIntegral32(PF_EffectWorld &def,
-                  int x,
-                  int y)
-{
-    return (PF_Pixel*)((char*)def.data +
-                       (y * def.rowbytes) +
-                       (x * sizeof(PF_Pixel)));
-}
-//same in 16bits
-static PF_Pixel16
-*sampleIntegral64(PF_EffectWorld &def,
-                  int x,
-                  int y)
-{  assert(PF_WORLD_IS_DEEP(&def));
-    return (PF_Pixel16*)((char*)def.data +
-                         (y * def.rowbytes) +
-                         (x * sizeof(PF_Pixel16)));
-}
-//same in 32 bits
-static  PF_PixelFloat
-*sampleIntegral128(PF_EffectWorld &def,
-                  int x,
-                  int y)
-{
-    return (PF_PixelFloat*)((char*)def.data +
-                       (y * def.rowbytes) +
-                       (x * sizeof(PF_PixelFloat)));
-}
-
-//ADAPT FOR EVERY COLORSPACES. IN ORDER TO GROUP THE DETECTION.
-static void
-GetPixelValue (
-                    PF_EffectWorld  *WorldP,
-                    PF_PixelFormat  pxFormat,
-                                int x,
-                                int y,
-                    PF_PixelFloat		*pixvalueF)
-{
-    switch (pxFormat)
-    {
-        case PF_PixelFormat_ARGB128:
-            pixvalueF = sampleIntegral128(*WorldP, x, y);
-            break;
-
-        case PF_PixelFormat_ARGB64:
-            PF_Pixel16 temp16;
-            temp16 = *sampleIntegral64(*WorldP, x, y);
-            pixvalueF->red =   PF_FpShort (temp16.red)/PF_MAX_CHAN16;
-            pixvalueF->green = PF_FpShort (temp16.green)/PF_MAX_CHAN16;
-            pixvalueF->blue =  PF_FpShort (temp16.blue)/PF_MAX_CHAN16;
-            break;
-            
-        case PF_PixelFormat_ARGB32:
-            PF_Pixel temp8;
-            temp8 = *sampleIntegral32(*WorldP, x, y);
-            pixvalueF->red =   PF_FpShort  (temp8.red)/PF_MAX_CHAN8;
-            pixvalueF->green = PF_FpShort( temp8.green)/PF_MAX_CHAN8;
-            pixvalueF->blue =  PF_FpShort (temp8.blue)/PF_MAX_CHAN8;
-            break;
-            
-    }
-}
-
-//DETECT RATIO IN THE LAYER
-static void
-GetRatioFromWorld (
-    PF_InData		*in_data,
-    PF_EffectWorld  *detectWorldP,
-    PF_PixelFormat  pxformat,
-    PF_FpLong		*detectedRatioF)
-{
-    PF_FpLong InWidthF,InHeightF,PixRatioNumF,PixRatioDenF, layerRatioF, TolerenceF;
-	A_long  cordX, cordY;
-    A_long state =0;//value to indicate the state of the detection.
-
-    InWidthF = in_data->width;
-    InHeightF = in_data->height;
-    PixRatioNumF = in_data->pixel_aspect_ratio.num;
-    PixRatioDenF = in_data->pixel_aspect_ratio.den;
-
-	PF_FpLong scale_x = in_data->downsample_x.num / (float)in_data->downsample_x.den,
-			  scale_y = in_data->downsample_y.num / (float)in_data->downsample_y.den;
-	InWidthF *= scale_x;
-	InHeightF *= scale_y;
-    
-    TolerenceF = 0.2;
-
-    
-    PF_PixelFloat PixelValue;
-    GetPixelValue (detectWorldP, pxformat,2,2, &PixelValue); //first hopthesis : no letterbox att all so return the composition ratio.
-    PF_FpLong sum = PixelValue.red +PixelValue.green+ PixelValue.blue;
-    if (sum/3 >TolerenceF)
-    {
-        layerRatioF = -1; // if -1 ==> nothing detected. if positive value something detected.
-    }
-    
-    else
-    {
-        state =1; //go to next state
-    }
-
-    //2nd hypothesis ->vertical black scopes.
-    if (state ==1)
-    {
-        for (A_long i =0; i <= InWidthF/2; i++)
-        {
-            PF_PixelFloat PixelValueVh; // for vertical detection. scan horizontal to detect the break.
-            GetPixelValue (detectWorldP, pxformat,i,2, &PixelValueVh);
-             PF_FpLong sumTwo = PixelValueVh.red +PixelValueVh.green+ PixelValueVh.blue;
-            if (state !=1) //shortcut to exit the loop
-            {
-                break;
-            }
-            else if (i ==(InWidthF/2)-1)
-            {
-                state =3; //go to next state
-            }
-            
-            else if(i > 2 && //security of 2 black lines
-                    (sumTwo/3 >TolerenceF))
-            {
-                //blackout  detected so check verticaly if it's continue
-                cordX =i-1;// go back one pixel earlier with the last black value.
-                for (A_long j =0; j <= InHeightF/2; j++)
-                {
-                    PF_PixelFloat PixelValueVV;
-                    GetPixelValue (detectWorldP, pxformat,cordX,j, &PixelValueVV);
-                     PF_FpLong sumThree =PixelValueVV.red +PixelValueVV.green + PixelValueVV.blue;
-                    if(j > 2 && //security of 2 black lines
-                       (sumThree >TolerenceF))
-                    {
-                        layerRatioF =-1;  //  the black is not continue so its a wrong scope
-                        state = -1; // error so go back to the exit state and brack the upper loop.
-                        break;
-                    }
-                    else if (j == A_long (InHeightF/2)-1)
-                    {
-                        //the black line was continue on the half part of the frame so we assume it's the good one. Go to check downstare
-                        state =2;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    //if it's a positive result, check the other side
-    if (state ==2)
-    {
-        for (A_long i =0; i <= InHeightF/2; i++)
-        {
-
-            PF_PixelFloat PixelValueVh; // for vertical detection. scan horizontal to detect the break.
-            GetPixelValue (detectWorldP, pxformat,A_long(InWidthF)-cordX,i, &PixelValueVh);
-            PF_FpLong sumOne = PixelValueVh.red +PixelValueVh.green+ PixelValueVh.blue;
-            
-            if (state !=2)
-            {
-                break;
-            }
-            
-            if (sumOne/3 >TolerenceF)
-            {
-                state =-1; //go to next state
-                break;
-            }
-            else if (i == InHeightF/2 -1)
-            {
-                layerRatioF =(InWidthF -(2*cordX))/InHeightF;
-                state =0;
-            }
-        }
-
-    }
-    
-    
-    
-    //3rd hypothesis ->horizontal black scopes.
-    if (state ==3)
-    {
-        for (A_long i =0; i <= InHeightF/2; i++)
-        {
-            PF_PixelFloat PixelValueVV; // for vertical detection. scan vertical to detect the break.
-            GetPixelValue (detectWorldP, pxformat,2,i, &PixelValueVV);
-            PF_FpLong sumTwo = PixelValueVV.red +PixelValueVV.green+ PixelValueVV.blue;
-            
-            if (state !=3) //shortcut to exit the loop
-            {
-                break;
-            }
-            if (i == A_long (InHeightF/2)-1)
-            {
-                state =-1;
-                    
-            }
-            
-            else if(i > 2 && //security of 2 black lines
-                    (sumTwo/3 >TolerenceF))
-            {
-                //blackout  detected so check verticaly if it's continue
-                cordY =i-1;// go back one pixel earlier with the last black value.
-                
-                
-                for (A_long j =0; j <= InWidthF/2; j++)
-                {
-                    PF_PixelFloat PixelValueVh;
-                    GetPixelValue (detectWorldP, pxformat,j,cordY, &PixelValueVh);
-                    PF_FpLong sumThree = PixelValueVh.red +PixelValueVh.green+ PixelValueVh.blue;
-                    if(j > 2 && //security of 2 black lines
-                        (sumThree/3 >TolerenceF))
-                    {
-                        layerRatioF =-1;  //  the black is not continue so its a wrong scope
-                        state =-1; // error so go back to the exit state and brack the upper loop.
-                        break;
-                    }
-                    else if (j == A_long (InWidthF/2)-1)
-                    {
-                        //the black line was continue on the half part of the frame so we assume it's the good one
-                        
-                        state = 4; // we founded what we expected to go to the exit state.
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    
-    //if it's a positive result, check on the down side.
-    //if it's a positive result, check the other side
-    if (state ==4)
-    {
-        for (A_long i =0; i <= InWidthF/2; i++)
-        {
-            
-            PF_PixelFloat PixelValueVh; // for vertical detection. scan horizontal to detect the break.
-            GetPixelValue (detectWorldP, pxformat,i,A_long (InHeightF)-cordY, &PixelValueVh);
-            PF_FpLong sumOne = PixelValueVh.red +PixelValueVh.green+ PixelValueVh.blue;
-            
-            if (state !=4)
-            {
-                break;
-            }
-            
-            if (sumOne >TolerenceF)
-            {
-                state =-1; //go to next state
-                break;
-            }
-            else if (i == InHeightF/2 -1)
-            {
-                layerRatioF =InWidthF/(InHeightF -(2*cordY));
-                state =0;
-            }
-        }
-        
-    }
-    
-    
-    //if  not detectd before
-    if ((layerRatioF ==-1)|| (state ==-1))
-    {
-        *detectedRatioF = (((double)InWidthF) *  PixRatioNumF) / ((double)InHeightF*PixRatioDenF); //ratio input from layer
-    }
-    else // the function returns the value
-    {
-        *detectedRatioF = ceil (layerRatioF*100)/100;
-    }
-}
 
 static PF_Err
 GlobalSetup (
@@ -496,8 +175,9 @@ ParamsSetup(
 	PF_Err				err					= PF_Err_NONE;
 	PF_ParamDef			def;
     
-    
-	AEFX_CLR_STRUCT(def);
+  
+	
+    AEFX_CLR_STRUCT(def);
 
 	def.flags		=	PF_ParamFlag_SUPERVISE			|
                         PF_ParamFlag_CANNOT_TIME_VARY   |
@@ -622,19 +302,379 @@ ParamsSetup(
                          0,
                          0,
                          LETB_RESIZE_DISK_ID);
-    
+     AEFX_CLR_STRUCT(def);
     PF_END_TOPIC (END_TOPIC_GR1_DISK_ID);
     AEFX_CLR_STRUCT(def);
     
-
+    PF_ADD_TOPICX (STR(StrID_settings_Param_Name),
+                   0,
+                   TOPIC_GR2_DISK_ID);
 
     
     AEFX_CLR_STRUCT(def);
+    
+    def.flags		=	PF_ParamFlag_SUPERVISE			|
+    PF_ParamFlag_CANNOT_TIME_VARY   |
+    PF_ParamFlag_CANNOT_INTERP;
+
+    
+    PF_ADD_POPUP(STR(StrID_SizeSourceName),
+                 REF_LAYER,
+                 REF_COMPOSITION,
+                 STR(StrID_SizeSourceChoices),
+                 LETB_SIZE_SOURCE_DISK_ID);
+    
+    
+
+    AEFX_CLR_STRUCT(def);
+    
+    def.flags		|=	PF_ParamFlag_SUPERVISE |
+    PF_ParamFlag_CANNOT_TIME_VARY;
+    
+    PF_ADD_CHECKBOX(STR(StrID_ForceSName),
+                    STR(StrID_ForceSDescription),
+                    FALSE,
+                    0,
+                    LETB_FORCE_SCALE_DISK_ID);
+    
+    AEFX_CLR_STRUCT(def);
+    PF_END_TOPIC (END_TOPIC_GR1_DISK_ID);
+    AEFX_CLR_STRUCT(def);
+    
+    
+
     
     out_data->num_params = LETB_NUM_PARAMS;
 
 	return err;
 }
+
+
+static void
+//DEFINE PRESETS RATIO IN BASIC UI
+GetModeValue(
+             A_long			Mode,
+             A_long          *ModeValue)
+{
+    switch (Mode) {
+        case 1:
+            *ModeValue = 0;
+            break;
+            
+        case 2:
+            *ModeValue = 1;
+            break;
+
+            
+    }
+}
+
+
+static void
+//DEFINE PRESETS RATIO IN BASIC UI FOR SMART FX
+GetPresetRatioValue(
+                    A_long			PRESET,
+                    PF_FpLong		*presetratioF)
+{
+    switch (PRESET) {
+        case LETB_PRESET_FOT:
+            *presetratioF = 1.33;
+            break;
+            
+        case LETB_PRESET_SON:
+            *presetratioF = 1.77;
+            break;
+            
+        case LETB_PRESET_OHF:
+            *presetratioF = 1.85;
+            break;
+            
+        case LETB_PRESET_TTF:
+            *presetratioF = 2.35;
+            break;
+        case LETB_PRESET_TTN:
+            *presetratioF = 2.39;
+            break;
+            
+        case LETB_PRESET_TFZ:
+            *presetratioF = 2.40;
+            break;
+    }
+    
+}
+
+
+
+//Get 8bits Pixel value at point (x,y). from the SDK documentation.
+static  PF_Pixel
+*sampleIntegral32(PF_EffectWorld &def,
+                  int x,
+                  int y)
+{
+    return (PF_Pixel*)((char*)def.data +
+                       (y * def.rowbytes) +
+                       (x * sizeof(PF_Pixel)));
+}
+//same in 16bits
+static PF_Pixel16
+*sampleIntegral64(PF_EffectWorld &def,
+                  int x,
+                  int y)
+{  assert(PF_WORLD_IS_DEEP(&def));
+    return (PF_Pixel16*)((char*)def.data +
+                         (y * def.rowbytes) +
+                         (x * sizeof(PF_Pixel16)));
+}
+//same in 32 bits
+static  PF_PixelFloat
+*sampleIntegral128(PF_EffectWorld &def,
+                   int x,
+                   int y)
+{
+    return (PF_PixelFloat*)((char*)def.data +
+                            (y * def.rowbytes) +
+                            (x * sizeof(PF_PixelFloat)));
+}
+
+//ADAPT FOR EVERY COLORSPACES. IN ORDER TO GROUP THE DETECTION.
+static void
+GetPixelValue (
+               PF_EffectWorld  *WorldP,
+               PF_PixelFormat  pxFormat,
+               int x,
+               int y,
+               PF_PixelFloat		*pixvalueF)
+{
+    switch (pxFormat)
+    {
+        case PF_PixelFormat_ARGB128:
+            pixvalueF = sampleIntegral128(*WorldP, x, y);
+            break;
+            
+        case PF_PixelFormat_ARGB64:
+            PF_Pixel16 temp16;
+            temp16 = *sampleIntegral64(*WorldP, x, y);
+            pixvalueF->red =   PF_FpShort (temp16.red)/PF_MAX_CHAN16;
+            pixvalueF->green = PF_FpShort (temp16.green)/PF_MAX_CHAN16;
+            pixvalueF->blue =  PF_FpShort (temp16.blue)/PF_MAX_CHAN16;
+            break;
+            
+        case PF_PixelFormat_ARGB32:
+            PF_Pixel temp8;
+            temp8 = *sampleIntegral32(*WorldP, x, y);
+            pixvalueF->red =   PF_FpShort  (temp8.red)/PF_MAX_CHAN8;
+            pixvalueF->green = PF_FpShort( temp8.green)/PF_MAX_CHAN8;
+            pixvalueF->blue =  PF_FpShort (temp8.blue)/PF_MAX_CHAN8;
+            break;
+            
+    }
+}
+
+//DETECT RATIO IN THE LAYER
+static void
+GetRatioFromWorld (
+                   PF_InData		*in_data,
+                   PF_EffectWorld  *detectWorldP,
+                   PF_PixelFormat  pxformat,
+                   PF_FpLong		*detectedRatioF)
+{
+    PF_FpLong InputWidthF ,InputHeightF ,PixRatioNumF,PixRatioDenF, layerRatioF, TolerenceF;
+    A_long  cordX, cordY;
+    A_long state =0;//value to indicate the state of the detection.
+    
+    InputWidthF  = in_data->width;
+    InputHeightF  = in_data->height;
+    PixRatioNumF = in_data->pixel_aspect_ratio.num;
+    PixRatioDenF = in_data->pixel_aspect_ratio.den;
+    
+    PF_FpLong scale_x = in_data->downsample_x.num / (float)in_data->downsample_x.den,
+    scale_y = in_data->downsample_y.num / (float)in_data->downsample_y.den;
+    InputWidthF  *= scale_x;
+    InputHeightF  *= scale_y;
+    
+    TolerenceF = 0.2;
+    
+    
+    PF_PixelFloat PixelValue;
+    GetPixelValue (detectWorldP, pxformat,2,2, &PixelValue); //first hopthesis : no letterbox att all so return the composition ratio.
+    PF_FpLong sum = PixelValue.red +PixelValue.green+ PixelValue.blue;
+    if (sum/3 >TolerenceF)
+    {
+        layerRatioF = -1; // if -1 ==> nothing detected. if positive value something detected.
+    }
+    
+    else
+    {
+        state =1; //go to next state
+    }
+    
+    //2nd hypothesis ->vertical black scopes.
+    if (state ==1)
+    {
+        for (A_long i =0; i <= InputWidthF /2; i++)
+        {
+            PF_PixelFloat PixelValueVh; // for vertical detection. scan horizontal to detect the break.
+            GetPixelValue (detectWorldP, pxformat,i,2, &PixelValueVh);
+            PF_FpLong sumTwo = PixelValueVh.red +PixelValueVh.green+ PixelValueVh.blue;
+            if (state !=1) //shortcut to exit the loop
+            {
+                break;
+            }
+            else if (i ==(InputWidthF /2)-1)
+            {
+                state =3; //go to next state
+            }
+            
+            else if(i > 2 && //security of 2 black lines
+                    (sumTwo/3 >TolerenceF))
+            {
+                //blackout  detected so check verticaly if it's continue
+                cordX =i-1;// go back one pixel earlier with the last black value.
+                for (A_long j =0; j <= InputHeightF /2; j++)
+                {
+                    PF_PixelFloat PixelValueVV;
+                    GetPixelValue (detectWorldP, pxformat,cordX,j, &PixelValueVV);
+                    PF_FpLong sumThree =PixelValueVV.red +PixelValueVV.green + PixelValueVV.blue;
+                    if(j > 2 && //security of 2 black lines
+                       (sumThree >TolerenceF))
+                    {
+                        layerRatioF =-1;  //  the black is not continue so its a wrong scope
+                        state = -1; // error so go back to the exit state and brack the upper loop.
+                        break;
+                    }
+                    else if (j == A_long (InputHeightF /2)-1)
+                    {
+                        //the black line was continue on the half part of the frame so we assume it's the good one. Go to check downstare
+                        state =2;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    //if it's a positive result, check the other side
+    if (state ==2)
+    {
+        for (A_long i =0; i <= InputHeightF /2; i++)
+        {
+            
+            PF_PixelFloat PixelValueVh; // for vertical detection. scan horizontal to detect the break.
+            GetPixelValue (detectWorldP, pxformat,A_long(InputWidthF )-cordX,i, &PixelValueVh);
+            PF_FpLong sumOne = PixelValueVh.red +PixelValueVh.green+ PixelValueVh.blue;
+            
+            if (state !=2)
+            {
+                break;
+            }
+            
+            if (sumOne/3 >TolerenceF)
+            {
+                state =-1; //go to next state
+                break;
+            }
+            else if (i == InputHeightF /2 -1)
+            {
+                layerRatioF =(InputWidthF  -(2*cordX))/InputHeightF ;
+                state =0;
+            }
+        }
+        
+    }
+    
+    
+    
+    //3rd hypothesis ->horizontal black scopes.
+    if (state ==3)
+    {
+        for (A_long i =0; i <= InputHeightF /2; i++)
+        {
+            PF_PixelFloat PixelValueVV; // for vertical detection. scan vertical to detect the break.
+            GetPixelValue (detectWorldP, pxformat,2,i, &PixelValueVV);
+            PF_FpLong sumTwo = PixelValueVV.red +PixelValueVV.green+ PixelValueVV.blue;
+            
+            if (state !=3) //shortcut to exit the loop
+            {
+                break;
+            }
+            if (i == A_long (InputHeightF /2)-1)
+            {
+                state =-1;
+                
+            }
+            
+            else if(i > 2 && //security of 2 black lines
+                    (sumTwo/3 >TolerenceF))
+            {
+                //blackout  detected so check verticaly if it's continue
+                cordY =i-1;// go back one pixel earlier with the last black value.
+                
+                
+                for (A_long j =0; j <= InputWidthF /2; j++)
+                {
+                    PF_PixelFloat PixelValueVh;
+                    GetPixelValue (detectWorldP, pxformat,j,cordY, &PixelValueVh);
+                    PF_FpLong sumThree = PixelValueVh.red +PixelValueVh.green+ PixelValueVh.blue;
+                    if(j > 2 && //security of 2 black lines
+                       (sumThree/3 >TolerenceF))
+                    {
+                        layerRatioF =-1;  //  the black is not continue so its a wrong scope
+                        state =-1; // error so go back to the exit state and brack the upper loop.
+                        break;
+                    }
+                    else if (j == A_long (InputWidthF /2)-1)
+                    {
+                        //the black line was continue on the half part of the frame so we assume it's the good one
+                        
+                        state = 4; // we founded what we expected to go to the exit state.
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    //if it's a positive result, check on the down side.
+    //if it's a positive result, check the other side
+    if (state ==4)
+    {
+        for (A_long i =0; i <= InputWidthF /2; i++)
+        {
+            
+            PF_PixelFloat PixelValueVh; // for vertical detection. scan horizontal to detect the break.
+            GetPixelValue (detectWorldP, pxformat,i,A_long (InputHeightF )-cordY, &PixelValueVh);
+            PF_FpLong sumOne = PixelValueVh.red +PixelValueVh.green+ PixelValueVh.blue;
+            
+            if (state !=4)
+            {
+                break;
+            }
+            
+            if (sumOne >TolerenceF)
+            {
+                state =-1; //go to next state
+                break;
+            }
+            else if (i == InputHeightF /2 -1)
+            {
+                layerRatioF =InputWidthF /(InputHeightF  -(2*cordY));
+                state =0;
+            }
+        }
+        
+    }
+    
+    
+    //if  not detectd before
+    if ((layerRatioF ==-1)|| (state ==-1))
+    {
+        *detectedRatioF = (((double)InputWidthF ) *  PixRatioNumF) / ((double)InputHeightF *PixRatioDenF); //ratio input from layer
+    }
+    else // the function returns the value
+    {
+        *detectedRatioF = ceil (layerRatioF*100)/100;
+    }
+}
+
 
 
 static PF_FpLong
@@ -655,12 +695,12 @@ CalculateBox(
 	int layerRatioInt = int(stuffP->layerRatioF * 100);
 
 	//definitions for horizontal letterbox
-	CondBlackHup = (stuffP->InHeightF - (stuffP->InWidthF / stuffP->userRatioF)) / 2;
-	CondBlackHdown = stuffP->InHeightF - ((stuffP->InHeightF - (stuffP->InWidthF / stuffP->userRatioF)) / 2);
+	CondBlackHup = (stuffP->InputHeightF  - (stuffP->InputWidthF  / stuffP->userRatioF)) / 2;
+	CondBlackHdown = stuffP->InputHeightF  - ((stuffP->InputHeightF  - (stuffP->InputWidthF  / stuffP->userRatioF)) / 2);
 
 	//definitions for verticals letterbox
-	CondBlackVleft = ((stuffP->InWidthF - (stuffP->InHeightF*stuffP->userRatioF)) / 2);
-	CondBlackVright = stuffP->InWidthF - ((stuffP->InWidthF - (stuffP->InHeightF*stuffP->userRatioF)) / 2);
+	CondBlackVleft = ((stuffP->InputWidthF  - (stuffP->InputHeightF *stuffP->userRatioF)) / 2);
+	CondBlackVright = stuffP->InputWidthF  - ((stuffP->InputWidthF  - (stuffP->InputHeightF *stuffP->userRatioF)) / 2);
 
 
 	if (stuffP)
@@ -730,17 +770,14 @@ PixelFunc8 (
         }
         else
         {
+            new_xFi = PF_Fixed( (((A_long)xL << 16) + stuffP->x_offF)/stuffP->scaleFactorF);
+            new_yFi = PF_Fixed( (((A_long)yL << 16) + stuffP->y_offF)/stuffP->scaleFactorF);
             
-            
-            new_xFi = PF_Fixed( (((A_long)xL << 16) + stuffP->x_offF )/stuffP->scaleFactor);
-            new_yFi = PF_Fixed( (((A_long)yL << 16) + stuffP->y_offF)/stuffP->scaleFactor);
             ERR(stuffP->in_data.utils->subpixel_sample (in_data->effect_ref,
                                                             new_xFi,
                                                             new_yFi,
                                                             &stuffP->samp_pb,
                                                             PosOutP));
-
-            
 
             outP->alpha	= inP->alpha;
             outP->red = A_u_short (     PosOutP->red   *   CalculateBox(refcon, xL, yL)+(stuffP->Color.red * (1- CalculateBox(refcon, xL, yL))));
@@ -784,8 +821,8 @@ PixelFunc16(
         else
         {
             
-            new_xFi = PF_Fixed((((A_long)xL << 16) + stuffP->x_offF )/stuffP->scaleFactor);
-            new_yFi = PF_Fixed((((A_long)yL << 16) + stuffP->y_offF)/stuffP->scaleFactor);
+            new_xFi = PF_Fixed((((A_long)xL << 16) + stuffP->x_offF )/stuffP->scaleFactorF);
+            new_yFi = PF_Fixed((((A_long)yL << 16) + stuffP->y_offF)/stuffP->scaleFactorF);
             ERR(stuffP->in_data.utils->subpixel_sample16 (in_data->effect_ref,
                                                         new_xFi,
                                                         new_yFi,
@@ -824,11 +861,11 @@ PixelFuncFloat(
         }
         else
         {
-            if ((stuffP->x_offF !=0)&& (stuffP->y_offF !=0)&&(stuffP->scaleFactor !=1)) // because it's very slower in 32 bits than in 16/8bits, we do a  special condition when transformation is not afected by user.
+            if ((stuffP->x_offF !=0)&& (stuffP->y_offF !=0)&&(stuffP->scaleFactorF !=1)) // because it's very slower in 32 bits than in 16/8bits, we do a  special condition when transformation is not afected by user.
             {
             AEGP_SuiteHandler suites(stuffP->in_data.pica_basicP);
-                new_xFi = PF_Fixed((((A_long)xL << 16) + stuffP->x_offF )/stuffP->scaleFactor);
-                new_yFi = PF_Fixed((((A_long)yL << 16) + stuffP->y_offF)/stuffP->scaleFactor);
+                new_xFi = PF_Fixed((((A_long)xL << 16) + stuffP->x_offF )/stuffP->scaleFactorF);
+                new_yFi = PF_Fixed((((A_long)yL << 16) + stuffP->y_offF)/stuffP->scaleFactorF);
             
             
             ERR(suites.SamplingFloatSuite1()->nn_sample_float(stuffP->in_data.effect_ref,
@@ -1041,6 +1078,10 @@ MakeParamCopy(
     copy[LETB_GR1]              = *actual[LETB_GR1];
     copy[LETB_CENTER]           = *actual[LETB_CENTER];
     copy[LETB_RESIZE]           = *actual[LETB_RESIZE];
+    copy[LETB_GR2]              = *actual[LETB_GR2];
+     copy[LETB_SIZE_SOURCE]       = *actual[LETB_SIZE_SOURCE];
+    copy[LETB_FORCE_SCALE]      = *actual[LETB_FORCE_SCALE];
+   
     return PF_Err_NONE;
     
 }
@@ -1085,20 +1126,13 @@ UserChangedParam(
             PF_FpLong scanlayerRatioF;
             
             
-            if (in_data->appl_id != 'PrMr') //Premiere doesn't support the worldsuite2
+            if (in_data->appl_id != 'PrMr')
             {
-               // PF_WorldSuite2	*dwsP		=	NULL;
+                
 				PF_EffectWorld *scanWorldP;
 				PF_PixelFormat detectFormat = PF_PixelFormat_INVALID;
                
-               /*
-                ERR(AEFX_AcquireSuite(	in_data,
-                                      out_data,
-                                      kPFWorldSuite,
-                                      kPFWorldSuiteVersion2,
-                                      STR(StrID_Err_LoadSuite),
-                                      (void**)&dwsP)); */ 
-				if (!err) //dwsP && 
+				if (!err) 
 				{
 					PF_ParamDef paramInput;
 					AEFX_CLR_STRUCT(paramInput);
@@ -1125,32 +1159,25 @@ UserChangedParam(
 					{
 						detectFormat = PF_PixelFormat_ARGB128;
 					}
-
-					
-					//ERR(dwsP->PF_GetPixelFormat (scanWorldP, &detectFormat)); // Get the format for the pixel analys					 
+			 
 					GetRatioFromWorld (in_data, scanWorldP, detectFormat,&scanlayerRatioF);
-					/*ERR2(AEFX_ReleaseSuite(	in_data,
-											out_data,
-											kPFWorldSuite,
-											kPFWorldSuiteVersion2,
-											STR(StrID_Err_FreeSuite)));*/
                 }
                 
             }
-            else //PREMIERE DOESN'T SUPPORT YET THE WORLDSUITE 2. SO FOR KNOW CHEAT AND DETECT THE LAYER RATIO
+            else // FOR KNOW CHEAT AND DETECT THE LAYER RATIO
             {
-                PF_FpLong InWidthF, InHeightF, PixRatioNumF, PixRatioDenF;
-                InWidthF = in_data->width;
-                InHeightF = in_data->height;
+                PF_FpLong InputWidthF , InputHeightF , PixRatioNumF, PixRatioDenF;
+                InputWidthF  = in_data->width;
+                InputHeightF  = in_data->height;
                 PixRatioNumF = in_data->pixel_aspect_ratio.num;
                 PixRatioDenF = in_data->pixel_aspect_ratio.den;
                 
                
                 PF_FpLong scale_x = in_data->downsample_x.num/ (float)in_data->downsample_x.den,
                 scale_y = in_data->downsample_y.num/ (float)in_data->downsample_y.den;
-                InWidthF *= scale_x;
-                InHeightF *= scale_y;
-                scanlayerRatioF  =  InWidthF / InHeightF; //ratio input from layer
+                InputWidthF  *= scale_x;
+                InputHeightF  *= scale_y;
+                scanlayerRatioF  =  InputWidthF  / InputHeightF ; //ratio input from layer
             }
            
             
@@ -1185,8 +1212,11 @@ UpdateParameterUI(
     trsp_streamH        = NULL,
     color_streamH       = NULL,
     topic_streamH       = NULL,
-    center_streamH    = NULL,
-    resize_streamH      = NULL;
+    center_streamH      = NULL,
+    resize_streamH      = NULL,
+    topic2_streamH      = NULL,
+    sizeSource_streamH  = NULL,
+    forceScale_streamH  = NULL;
     
     PF_ParamType		param_type;
     PF_ParamDefUnion	param_union;
@@ -1201,6 +1231,8 @@ UpdateParameterUI(
     
     PF_ParamDef		param_copy[LETB_NUM_PARAMS];
     ERR(MakeParamCopy(params, param_copy));
+    
+    
     
     if (in_data->appl_id != 'PrMr') {
         
@@ -1241,6 +1273,13 @@ UpdateParameterUI(
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_GR1, &topic_streamH ));
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_CENTER, &center_streamH));
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_RESIZE,&resize_streamH));
+        
+
+        ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_GR2, &topic2_streamH ));
+        ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_SIZE_SOURCE, &sizeSource_streamH));
+        ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_FORCE_SCALE,&forceScale_streamH));
+
+        
         
         // Toggle visibility of parameters
         //HDE ONE
@@ -1288,6 +1327,17 @@ UpdateParameterUI(
         if (resize_streamH){
             ERR2(suites.StreamSuite2()->AEGP_DisposeStream(resize_streamH));
         }
+        if (topic2_streamH){
+            ERR2(suites.StreamSuite2()->AEGP_DisposeStream(topic2_streamH));
+        }
+        if (sizeSource_streamH){
+            ERR2(suites.StreamSuite2()->AEGP_DisposeStream(sizeSource_streamH));
+        }
+        if (forceScale_streamH){
+            ERR2(suites.StreamSuite2()->AEGP_DisposeStream(forceScale_streamH));
+        }
+
+        
         if (!err){
             out_data->out_flags |= PF_OutFlag_FORCE_RERENDER;
         }
@@ -1495,16 +1545,20 @@ Render(	PF_InData		*in_data,
     stuffP.in_data = *in_data;
     stuffP.samp_pb.src = inputP;
     
-    stuffP.InWidthF = in_data->width; 
-    stuffP.InHeightF = in_data->height;
+    stuffP.InputWidthF  = in_data->width; 
+    stuffP.InputHeightF  = in_data->height;
     stuffP.PixRatioNumF = in_data->pixel_aspect_ratio.num;
     stuffP.PixRatioDenF = in_data->pixel_aspect_ratio.den;
-        
-    stuffP.layerRatioF = (((double)in_data->width) *  stuffP.PixRatioNumF) / ((double)in_data->height*stuffP.PixRatioDenF); //ratio input from layer
+   
     PF_FpLong scale_x = in_data->downsample_x.num/ (float)in_data->downsample_x.den,
                 scale_y = in_data->downsample_y.num/ (float)in_data->downsample_y.den;
-    stuffP.InWidthF *= scale_x;
-    stuffP.InHeightF *= scale_y;
+    
+    stuffP.InputWidthF  *= scale_x;
+    stuffP.InputHeightF  *= scale_y;
+    
+     stuffP.layerRatioF = (((double)in_data->width) *  stuffP.PixRatioNumF) / ((double)in_data->height*stuffP.PixRatioDenF); //ratio input from layer
+    
+
     stuffP.Color = params[LETB_COLOR]->u.cd.value;
     stuffP.PoTransparentB = params[LETB_TRSP]->u.bd.value;
     
@@ -1670,7 +1724,8 @@ PreRender(
 	PF_PreRenderExtra		*extraP)
 {
     PF_Err	err				= PF_Err_NONE,
-            err2            = PF_Err_NONE;
+    err2            = PF_Err_NONE;
+
 
 	PF_RenderRequest req	= extraP->input->output_request;
 
@@ -1681,6 +1736,14 @@ PreRender(
 	PF_Handle	infoH		=	suites.HandleSuite1()->host_new_handle(sizeof(prerender_stuff));
 
 	prerender_stuff		*stuffP = NULL;
+    AEGP_LayerH		layerH;
+    AEGP_StreamType streamH;
+    AEGP_StreamVal2	streamValP;
+    A_Time lay_time;
+    
+
+    
+    
 
 	if (infoH){
 		stuffP = reinterpret_cast<prerender_stuff*>(suites.HandleSuite1()->host_lock_handle(infoH));
@@ -1704,11 +1767,22 @@ PreRender(
                                   in_data->time_scale,
                                   &scale_param));
             
-            PF_FpLong           scaleFactor;
-            scaleFactor = scale_param.u.fs_d.value/100;
+            PF_FpLong  scaleFactorF;
+            scaleFactorF  = scale_param.u.fs_d.value/100;
             ERR2(PF_CHECKIN_PARAM(in_data, &scale_param));
             
+            ERR(suites.LayerSuite8()->AEGP_GetActiveLayer(&layerH));
+            if (!err)
+            {
+                ERR2(suites.StreamSuite4()->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_SCALE,AEGP_LTimeMode_CompTime,&lay_time, false, &streamValP, &streamH));
+
+            }
             
+ 
+             stuffP->scaleFactorxF = streamValP.three_d.x/100;
+             stuffP->scaleFactoryF = streamValP.three_d.y/100;
+            
+
 			AEFX_CLR_STRUCT(in_result);
 
 			if (!err){
@@ -1728,11 +1802,10 @@ PreRender(
                     AEFX_CLR_STRUCT(*stuffP);
                     PF_Fixed 	widthF	= INT2FIX(ABS(in_result.max_result_rect.right - in_result.max_result_rect.left)),
                                 heightF = INT2FIX(ABS(in_result.max_result_rect.bottom - in_result.max_result_rect.top));
+
                     
-                    
-                    
-                    stuffP->x_offF = PF_Fixed((widthF*scaleFactor / 2) - displace_param.u.td.x_value);
-                    stuffP->y_offF = PF_Fixed((heightF*scaleFactor / 2) - displace_param.u.td.y_value);
+                    stuffP->x_offF = PF_Fixed((widthF*scaleFactorF/2) - displace_param.u.td.x_value);
+                    stuffP->y_offF = PF_Fixed((heightF*scaleFactorF/2) - displace_param.u.td.y_value);
                     
 					UnionLRect(&in_result.result_rect, 		&extraP->output->result_rect);
 					UnionLRect(&in_result.max_result_rect, 	&extraP->output->max_result_rect);	
@@ -1789,16 +1862,17 @@ SmartRender(
         
 		if (stuffP){
             
-			stuffP->InWidthF = in_data->width;
-			stuffP->InHeightF = in_data->height;
+			stuffP->InputWidthF  = in_data->width;
+			stuffP->InputHeightF  = in_data->height;
 			stuffP->PixRatioNumF = in_data->pixel_aspect_ratio.num;
 			stuffP->PixRatioDenF = in_data->pixel_aspect_ratio.den;
-			
-			stuffP->layerRatioF = (((double)in_data->width) *  stuffP->PixRatioNumF) / ((double)in_data->height*stuffP->PixRatioDenF); //ratio input from layer
 			PF_FpLong scale_x = in_data->downsample_x.num / (float)in_data->downsample_x.den,
                     scale_y = in_data->downsample_y.num / (float)in_data->downsample_y.den;
-			stuffP->InWidthF *= scale_x;
-			stuffP->InHeightF *= scale_y;
+
+            stuffP->InputWidthF  *= scale_x;
+            stuffP->InputHeightF  *= scale_y;
+            
+            stuffP->layerRatioF = (((double)in_data->width) *  stuffP->PixRatioNumF) / ((double)in_data->height*stuffP->PixRatioDenF); //ratio input from layer
             
 
 			// checkout input & output buffers.
@@ -1885,12 +1959,41 @@ SmartRender(
                                   &params[LETB_RESIZE]));
             
             
-            stuffP->scaleFactor = params[LETB_RESIZE].u.fs_d.value/100;
-
-
-            
+            stuffP->scaleFactorF = params[LETB_RESIZE].u.fs_d.value/100;
             ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_RESIZE]));
-          
+            
+            
+            ERR(PF_CHECKOUT_PARAM(in_data,
+                                  LETB_SIZE_SOURCE,
+                                  in_data->current_time,
+                                  in_data->time_step,
+                                  in_data->time_scale,
+                                  &params[LETB_SIZE_SOURCE]));
+            
+            
+            A_long tempCompMode;
+            GetModeValue(params[LETB_SIZE_SOURCE].u.pd.value, &tempCompMode);
+            if (tempCompMode ==1)
+            {
+                stuffP->compModeB = true;
+            }
+            else
+            {
+                stuffP->compModeB = false;
+            }
+            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_MODE]));
+            
+            
+            
+            ERR(PF_CHECKOUT_PARAM(in_data,
+                                  LETB_TRSP,
+                                  in_data->current_time,
+                                  in_data->time_step,
+                                  in_data->time_scale,
+                                  &params[LETB_TRSP]));
+            
+            stuffP->forceScaleB= params[LETB_TRSP].u.bd.value;
+            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_TRSP]));
 
 
             
