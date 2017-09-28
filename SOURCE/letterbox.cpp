@@ -219,32 +219,7 @@ ParamsSetup(
 					PF_ParamFlag_EXCLUDE_FROM_HAVE_INPUTS_CHANGED,
 					LETB_SLIDER_DISK_ID);
 	
-	AEFX_CLR_STRUCT(def);
-    
-	def.flags		|=	PF_ParamFlag_SUPERVISE |
-						PF_ParamFlag_CANNOT_TIME_VARY;
 
-	def.ui_flags	= PF_PUI_STD_CONTROL_ONLY;
-    // IN AE the checkbox detect the ratio of the frame, but for know in premiere it gets the ratio of the layer size.
-    if (in_data->appl_id == 'PrMr')
-    {
-        PF_ADD_CHECKBOX("Input Ratio",
-                        "Get the ratio of the layer size",
-                        FALSE,
-                        0,
-                        LETB_CHECKBOX_DISK_ID);
-        
-        
-    }
-    else
-    {
-        PF_ADD_CHECKBOX(STR(StrID_CheckboxName),
-                        STR(StrID_CheckboxCaption),
-                        FALSE,
-                        0,
-                        LETB_CHECKBOX_DISK_ID);
-    }
-	
 
 	AEFX_CLR_STRUCT(def);
     
@@ -305,12 +280,55 @@ ParamsSetup(
      AEFX_CLR_STRUCT(def);
     PF_END_TOPIC (END_TOPIC_GR1_DISK_ID);
     AEFX_CLR_STRUCT(def);
+    AEFX_CLR_STRUCT(def);
+    
+    PF_ADD_TOPICX (STR(StrID_detect_Param_Name),
+                   0,
+                   TOPIC_GR2_DISK_ID);
+    AEFX_CLR_STRUCT(def);
+    
+    
+    def.flags		|=	PF_ParamFlag_SUPERVISE |
+    PF_ParamFlag_CANNOT_TIME_VARY;
+    PF_ADD_LAYER (STR(StrID_Layer_detectName),
+                  PF_LayerDefault_MYSELF,
+                  LETB_LAYER_ANALYS_DISK_ID);
+     AEFX_CLR_STRUCT(def);
+    
+    
+
+    def.flags		|=	PF_ParamFlag_SUPERVISE |
+    PF_ParamFlag_CANNOT_TIME_VARY;
+    
+    def.ui_flags	= PF_PUI_STD_CONTROL_ONLY;
+    // IN AE the checkbox detect the ratio of the frame, but for know in premiere it gets the ratio of the layer size.
+    if (in_data->appl_id == 'PrMr')
+    {
+        PF_ADD_CHECKBOX("Input Ratio",
+                        "Get the ratio of the layer size",
+                        FALSE,
+                        0,
+                        LETB_CHECKBOX_DISK_ID);
+        
+        
+    }
+    else
+    {
+        PF_ADD_CHECKBOX(STR(StrID_CheckboxName),
+                        STR(StrID_CheckboxCaption),
+                        FALSE,
+                        0,
+                        LETB_CHECKBOX_DISK_ID);
+    }
+     AEFX_CLR_STRUCT(def);
+    
+    
+    PF_END_TOPIC (END_TOPIC_GR2_DISK_ID);
+    AEFX_CLR_STRUCT(def);
     
     PF_ADD_TOPICX (STR(StrID_settings_Param_Name),
                    0,
-                   TOPIC_GR2_DISK_ID);
-
-    
+                   TOPIC_GR3_DISK_ID);
     AEFX_CLR_STRUCT(def);
     
     def.flags		=	PF_ParamFlag_SUPERVISE			|
@@ -338,7 +356,7 @@ ParamsSetup(
                     LETB_FORCE_SCALE_DISK_ID);
     
     AEFX_CLR_STRUCT(def);
-    PF_END_TOPIC (END_TOPIC_GR1_DISK_ID);
+    PF_END_TOPIC (END_TOPIC_GR3_DISK_ID);
     AEFX_CLR_STRUCT(def);
     
     
@@ -1123,9 +1141,12 @@ UserChangedParam(
         
         if (params[LETB_CHECKBOX]->u.bd.value == TRUE)
         {
+            params[LETB_MODE]->u.pd.value = MODE_ADVANCED;
+            ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
+                                                           LETB_MODE,
+                                                           params[LETB_MODE]));
+            
             PF_FpLong scanlayerRatioF;
-            
-            
             if (in_data->appl_id != 'PrMr')
             {
                 
@@ -1208,7 +1229,6 @@ UpdateParameterUI(
     my_sequence_dataP	seqP				= reinterpret_cast<my_sequence_dataP>(DH(out_data->sequence_data));
     AEGP_StreamRefH     preset_streamH		= NULL,
     slider_streamH		= NULL,
-    checkbox_streamH	= NULL,
     trsp_streamH        = NULL,
     color_streamH       = NULL,
     topic_streamH       = NULL,
@@ -1269,7 +1289,7 @@ UpdateParameterUI(
         ERR(suites.PFInterfaceSuite1()->AEGP_GetNewEffectForEffect(globP->my_id, in_data->effect_ref, &meH));
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_PRESET, 	&preset_streamH));
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_SLIDER,	&slider_streamH));
-        ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_CHECKBOX, &checkbox_streamH));
+        
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_GR1, &topic_streamH ));
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_CENTER, &center_streamH));
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_RESIZE,&resize_streamH));
@@ -1286,7 +1306,6 @@ UpdateParameterUI(
         ERR(suites.DynamicStreamSuite2()->AEGP_SetDynamicStreamFlag(preset_streamH, 	AEGP_DynStreamFlag_HIDDEN, FALSE, hide_oneB));
         //HIDE TWO
         ERR(suites.DynamicStreamSuite2()->AEGP_SetDynamicStreamFlag(slider_streamH, 	AEGP_DynStreamFlag_HIDDEN, FALSE, hide_twoB));
-        ERR(suites.DynamicStreamSuite2()->AEGP_SetDynamicStreamFlag(checkbox_streamH, 	AEGP_DynStreamFlag_HIDDEN, FALSE, hide_twoB));
         //HIDE THREE
         ERR(suites.DynamicStreamSuite2()->AEGP_SetDynamicStreamFlag(topic_streamH, 	AEGP_DynStreamFlag_HIDDEN, FALSE, hide_threeB));
         ERR(suites.DynamicStreamSuite2()->AEGP_SetDynamicStreamFlag(center_streamH, AEGP_DynStreamFlag_HIDDEN, FALSE, hide_threeB));
@@ -1308,10 +1327,6 @@ UpdateParameterUI(
         if (slider_streamH){
             ERR2(suites.StreamSuite2()->AEGP_DisposeStream(slider_streamH));
         }
-        if (checkbox_streamH){
-            ERR2(suites.StreamSuite2()->AEGP_DisposeStream(checkbox_streamH));
-        }
-
         if (trsp_streamH){
             ERR2(suites.StreamSuite2()->AEGP_DisposeStream(trsp_streamH));
         }
@@ -1395,12 +1410,6 @@ UpdateParameterUI(
                                                                     &param_copy[LETB_SLIDER]));
                 }
                 
-                if (!err) {
-                    param_copy[LETB_CHECKBOX].ui_flags |=	PF_PUI_INVISIBLE;
-                    ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
-                                                                    LETB_CHECKBOX,
-                                                                    &param_copy[LETB_CHECKBOX]));
-                }
 
             }
             else
@@ -1424,14 +1433,7 @@ UpdateParameterUI(
                                                                     LETB_SLIDER,
                                                                     &param_copy[LETB_SLIDER]));
                 }
-                
-                if (!err && (param_copy[LETB_CHECKBOX].ui_flags & PF_PUI_INVISIBLE)) {
-                    param_copy[LETB_CHECKBOX].ui_flags &= ~PF_PUI_INVISIBLE;
-                    
-                    ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref, 
-                                                                    LETB_CHECKBOX,
-                                                                    &param_copy[LETB_CHECKBOX]));
-                }
+
             }
             // Hide on transparent/not transparent
             if(!err && (params[LETB_TRSP]->u.bd.value == TRUE))
@@ -1770,7 +1772,7 @@ PreRender(
             PF_FpLong  scaleFactorF;
             scaleFactorF  = scale_param.u.fs_d.value/100;
             ERR2(PF_CHECKIN_PARAM(in_data, &scale_param));
-            
+            /*
             ERR(suites.LayerSuite8()->AEGP_GetActiveLayer(&layerH));
             if (!err)
             {
@@ -1780,7 +1782,7 @@ PreRender(
             
  
              stuffP->scaleFactorxF = streamValP.three_d.x/100;
-             stuffP->scaleFactoryF = streamValP.three_d.y/100;
+             stuffP->scaleFactoryF = streamValP.three_d.y/100;*/
             
 
 			AEFX_CLR_STRUCT(in_result);
