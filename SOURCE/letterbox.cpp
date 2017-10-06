@@ -54,8 +54,7 @@ GlobalSetup (
 	out_data->out_flags		=	PF_OutFlag_PIX_INDEPENDENT 			|
 								PF_OutFlag_SEND_UPDATE_PARAMS_UI	|
 								PF_OutFlag_USE_OUTPUT_EXTENT		|
-								PF_OutFlag_DEEP_COLOR_AWARE			|
-								PF_OutFlag_WIDE_TIME_INPUT;
+                                PF_OutFlag_DEEP_COLOR_AWARE;
 
 	// 	This new outflag, added in 5.5, makes After Effects
 	//	honor the initial state of the parameter's (in our case,
@@ -65,7 +64,7 @@ GlobalSetup (
 								PF_OutFlag2_FLOAT_COLOR_AWARE					|
 								PF_OutFlag2_SUPPORTS_SMART_RENDER				|
 								PF_OutFlag2_DOESNT_NEED_EMPTY_PIXELS			|
-								PF_OutFlag2_AUTOMATIC_WIDE_TIME_INPUT;
+								PF_OutFlag2_I_MIX_GUID_DEPENDENCIES;
 
     // For Premiere - declare supported pixel formats
     if (in_data->appl_id == 'PrMr') {
@@ -693,7 +692,60 @@ GetRatioFromWorld (
     }
 }
 
+static A_Err
+GetCompProperties(
+                  PF_InData                        *in_data,
+                  A_long                           *compWidthA,
+                  A_long                           *compHeightA,
+                  AEGP_DownsampleFactor            *compDownSampleFactor)
+{
+    A_Err 			err = A_Err_NONE;
+    AEGP_SuiteHandler		suites(in_data->pica_basicP);
+    
+    
+    AEGP_CompH		compH;
+    AEGP_LayerH		layerH;
+    AEGP_ItemH		itemH;
+    
+    ERR (suites.PFInterfaceSuite1()->AEGP_GetEffectLayer(in_data->effect_ref, &layerH)); //return layer parent of the effect.
+    ERR(suites.LayerSuite8()->AEGP_GetLayerParentComp (layerH, &compH)); //return parent com
+    ERR(suites.CompSuite11()->AEGP_GetItemFromComp(compH, &itemH)); //return the item matricule of the comp
+    ERR(suites.ItemSuite9()->AEGP_GetItemDimensions (itemH, compWidthA,compHeightA)); //return width/height property
+    ERR(suites.CompSuite11()->AEGP_GetCompDownsampleFactor(compH, compDownSampleFactor));
 
+    return err;
+}
+
+static A_Err
+GetLayerProperties(
+                   PF_InData          *in_data,
+                   AEGP_ThreeDVal        *PosTD,
+                   AEGP_ThreeDVal        *ScaleTD,
+                   AEGP_ThreeDVal        *AcPointTD)
+{
+    A_Err 			err = A_Err_NONE;
+    AEGP_SuiteHandler		suites(in_data->pica_basicP);
+    
+    AEGP_LayerH		layerH;
+    A_Time          currT;
+    AEGP_StreamVal2  streamValPositionP, streamValScaleP, streamValAcP;;
+    AEGP_StreamType streamTypePositionP, streamTypeScaleP, streamTypeAcP;
+    
+    
+    currT.value= in_data->current_time;
+    currT.scale =in_data->time_scale;
+    
+    ERR (suites.PFInterfaceSuite1()->AEGP_GetEffectLayer(in_data->effect_ref, &layerH)); //return layer parent of the effect.
+    ERR (suites.StreamSuite4()->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_POSITION,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValPositionP, &streamTypePositionP));
+    *PosTD =streamValPositionP.three_d;
+    ERR (suites.StreamSuite4()->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_SCALE,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValScaleP, &streamTypeScaleP));
+    *ScaleTD =streamValScaleP.three_d;
+    ERR (suites.StreamSuite4()->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_ANCHORPOINT,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValAcP, &streamTypeAcP));
+    *AcPointTD =streamValAcP.three_d;
+
+    
+    return err;
+}
 
 static PF_FpLong
 CalculateBox(
@@ -705,29 +757,29 @@ CalculateBox(
 	PF_Err		err = PF_Err_NONE;
 
 	PF_FpLong CondBlackHup, CondBlackHdown, CondBlackVleft, CondBlackVright;
-	prerender_stuff	*stuffP = reinterpret_cast<prerender_stuff*>(refcon);
+	prerender_letP	*letP = reinterpret_cast<prerender_letP*>(refcon);
 
 
 
-	int userRatioInt = int(stuffP->userRatioF * 100);
-	int layerRatioInt = int(stuffP->layerRatioF * 100);
+	int userRatioInt = int(letP->userRatioF * 100);
+	int layerRatioInt = int(letP->layerRatioF * 100);
 
 	//definitions for horizontal letterbox
-	CondBlackHup = (stuffP->InputHeightF  - (stuffP->InputWidthF  / stuffP->userRatioF)) / 2;
-	CondBlackHdown = stuffP->InputHeightF  - ((stuffP->InputHeightF  - (stuffP->InputWidthF  / stuffP->userRatioF)) / 2);
+	CondBlackHup = (letP->InputHeightF  - (letP->InputWidthF  / letP->userRatioF)) / 2;
+	CondBlackHdown = letP->InputHeightF  - ((letP->InputHeightF  - (letP->InputWidthF  / letP->userRatioF)) / 2);
 
 	//definitions for verticals letterbox
-	CondBlackVleft = ((stuffP->InputWidthF  - (stuffP->InputHeightF *stuffP->userRatioF)) / 2);
-	CondBlackVright = stuffP->InputWidthF  - ((stuffP->InputWidthF  - (stuffP->InputHeightF *stuffP->userRatioF)) / 2);
+	CondBlackVleft = ((letP->InputWidthF  - (letP->InputHeightF *letP->userRatioF)) / 2);
+	CondBlackVright = letP->InputWidthF  - ((letP->InputWidthF  - (letP->InputHeightF *letP->userRatioF)) / 2);
 
 
-	if (stuffP)
+	if (letP)
 	{
-		if ((stuffP->userRatioF == 0.0) || (userRatioInt == layerRatioInt))
+		if ((letP->userRatioF == 0.0) || (userRatioInt == layerRatioInt))
 		{
 			return 1.0;
 		}
-		else if (stuffP->userRatioF > stuffP->layerRatioF) //if ratio from UI up to footage's ratio--> then mask the height
+		else if (letP->userRatioF > letP->layerRatioF) //if ratio from UI up to footage's ratio--> then mask the height
 		{
 			if (yL < (CondBlackHup) || yL >(CondBlackHdown))
 			{
@@ -738,7 +790,7 @@ CalculateBox(
 				return 1.0;
 			}
 		}
-		else if (stuffP->userRatioF < stuffP->layerRatioF) //if ratio from UI under to ratio footage--> then mask the width
+		else if (letP->userRatioF < letP->layerRatioF) //if ratio from UI under to ratio footage--> then mask the width
 		{
 
 			if (xL <  CondBlackVleft || xL > CondBlackVright)
@@ -769,38 +821,38 @@ PixelFunc8 (
 	PF_Pixel8 	*inP,
 	PF_Pixel8 	*outP)
 {
-	prerender_stuff*	stuffP = reinterpret_cast<prerender_stuff*>(refcon);
-    PF_InData			*in_data	= &(stuffP->in_data);
+	prerender_letP*	letP = reinterpret_cast<prerender_letP*>(refcon);
+    PF_InData			*in_data	= &(letP->in_data);
     PF_Err				err			= PF_Err_NONE;
     PF_Fixed                new_xFi		= 0,
                             new_yFi		= 0;
     PF_Pixel8 *PosOutP = outP;
     
 
-    if (stuffP){
+    if (letP){
 
-        if (stuffP->PoTransparentB == TRUE)
+        if (letP->PoTransparentB == TRUE)
         {
             outP->alpha = A_u_short(PF_MAX_CHAN8*(1-(CalculateBox(refcon, xL, yL))));
-            outP->red = stuffP->Color.red;
-            outP->green = stuffP->Color.green;
-            outP->blue = stuffP->Color.blue;
+            outP->red = letP->Color.red;
+            outP->green = letP->Color.green;
+            outP->blue = letP->Color.blue;
         }
         else
         {
-            new_xFi = PF_Fixed( (((A_long)xL << 16) + stuffP->x_offF)/stuffP->scaleFactorF);
-            new_yFi = PF_Fixed( (((A_long)yL << 16) + stuffP->y_offF)/stuffP->scaleFactorF);
+            new_xFi = PF_Fixed( (((A_long)xL << 16) + letP->x_offF)/letP->scaleFactorF);
+            new_yFi = PF_Fixed( (((A_long)yL << 16) + letP->y_offF)/letP->scaleFactorF);
             
-            ERR(stuffP->in_data.utils->subpixel_sample (in_data->effect_ref,
+            ERR(letP->in_data.utils->subpixel_sample (in_data->effect_ref,
                                                             new_xFi,
                                                             new_yFi,
-                                                            &stuffP->samp_pb,
+                                                            &letP->samp_pb,
                                                             PosOutP));
 
             outP->alpha	= inP->alpha;
-            outP->red = A_u_short (     PosOutP->red   *   CalculateBox(refcon, xL, yL)+(stuffP->Color.red * (1- CalculateBox(refcon, xL, yL))));
-            outP->green = A_u_short (   PosOutP->green *   CalculateBox(refcon, xL, yL)   +(stuffP->Color.green * (1- CalculateBox(refcon, xL, yL))));
-            outP->blue = A_u_short (    PosOutP->blue   *  CalculateBox(refcon, xL, yL)+ (stuffP->Color.blue * (1- CalculateBox(refcon, xL, yL))));
+            outP->red = A_u_short (     PosOutP->red   *   CalculateBox(refcon, xL, yL)+(letP->Color.red * (1- CalculateBox(refcon, xL, yL))));
+            outP->green = A_u_short (   PosOutP->green *   CalculateBox(refcon, xL, yL)   +(letP->Color.green * (1- CalculateBox(refcon, xL, yL))));
+            outP->blue = A_u_short (    PosOutP->blue   *  CalculateBox(refcon, xL, yL)+ (letP->Color.blue * (1- CalculateBox(refcon, xL, yL))));
         }
     }
 
@@ -815,21 +867,21 @@ PixelFunc16(
 	PF_Pixel16 *inP,
 	PF_Pixel16 *outP)
 {
-	prerender_stuff*	stuffP = reinterpret_cast<prerender_stuff*>(refcon);
+	prerender_letP*	letP = reinterpret_cast<prerender_letP*>(refcon);
     PF_Err				err			= PF_Err_NONE;
-    PF_InData			*in_data	= &(stuffP->in_data);
+    PF_InData			*in_data	= &(letP->in_data);
     PF_Fixed                new_xFi		= 0,
     new_yFi		= 0;
 	
 
-	if (stuffP){
+	if (letP){
         register PF_Pixel16		scratch16;
         
-        scratch16.red		=	CONVERT8TO16(stuffP->Color.red);
-        scratch16.green		=	CONVERT8TO16(stuffP->Color.green);
-        scratch16.blue		=	CONVERT8TO16(stuffP->Color.blue);
+        scratch16.red		=	CONVERT8TO16(letP->Color.red);
+        scratch16.green		=	CONVERT8TO16(letP->Color.green);
+        scratch16.blue		=	CONVERT8TO16(letP->Color.blue);
         
-        if (stuffP->PoTransparentB == TRUE)
+        if (letP->PoTransparentB == TRUE)
         {
             outP->alpha = A_long(PF_MAX_CHAN16*(1-(CalculateBox(refcon, xL, yL))));
             outP->red =     A_long ( scratch16.red);
@@ -839,12 +891,12 @@ PixelFunc16(
         else
         {
             
-            new_xFi = PF_Fixed((((A_long)xL << 16) + stuffP->x_offF )/stuffP->scaleFactorF);
-            new_yFi = PF_Fixed((((A_long)yL << 16) + stuffP->y_offF)/stuffP->scaleFactorF);
-            ERR(stuffP->in_data.utils->subpixel_sample16 (in_data->effect_ref,
+            new_xFi = PF_Fixed((((A_long)xL << 16) + letP->x_offF )/letP->scaleFactorF);
+            new_yFi = PF_Fixed((((A_long)yL << 16) + letP->y_offF)/letP->scaleFactorF);
+            ERR(letP->in_data.utils->subpixel_sample16 (in_data->effect_ref,
                                                         new_xFi,
                                                         new_yFi,
-                                                        &stuffP->samp_pb,
+                                                        &letP->samp_pb,
                                                         outP));
             
             outP->red = A_long ( outP->red   *   CalculateBox(refcon, xL, yL)+ (scratch16.red * (1- CalculateBox(refcon, xL, yL))));
@@ -865,43 +917,43 @@ PixelFuncFloat(
 	PF_PixelFloat	*outP)
 {
     PF_Err				err			= PF_Err_NONE;
-	prerender_stuff*	stuffP = reinterpret_cast<prerender_stuff*>(refcon);
+	prerender_letP*	letP = reinterpret_cast<prerender_letP*>(refcon);
     PF_Fixed			new_xFi 		= 0,
                         new_yFi 		= 0;
 	
-	if (stuffP){
-        if (stuffP->PoTransparentB == TRUE)
+	if (letP){
+        if (letP->PoTransparentB == TRUE)
         {
             outP->alpha = inP->alpha *(1-(CalculateBox(refcon, xL, yL)));
-            outP->red   =   stuffP->Color32.red;
-            outP->green =   stuffP->Color32.green;
-            outP->blue  =   stuffP->Color32.blue;
+            outP->red   =   letP->Color32.red;
+            outP->green =   letP->Color32.green;
+            outP->blue  =   letP->Color32.blue;
         }
         else
         {
-            if ((stuffP->x_offF !=0)&& (stuffP->y_offF !=0)&&(stuffP->scaleFactorF !=1)) // because it's very slower in 32 bits than in 16/8bits, we do a  special condition when transformation is not afected by user.
+            if ((letP->x_offF !=0)&& (letP->y_offF !=0)&&(letP->scaleFactorF !=1)) // because it's very slower in 32 bits than in 16/8bits, we do a  special condition when transformation is not afected by user.
             {
-            AEGP_SuiteHandler suites(stuffP->in_data.pica_basicP);
-                new_xFi = PF_Fixed((((A_long)xL << 16) + stuffP->x_offF )/stuffP->scaleFactorF);
-                new_yFi = PF_Fixed((((A_long)yL << 16) + stuffP->y_offF)/stuffP->scaleFactorF);
+            AEGP_SuiteHandler suites(letP->in_data.pica_basicP);
+                new_xFi = PF_Fixed((((A_long)xL << 16) + letP->x_offF )/letP->scaleFactorF);
+                new_yFi = PF_Fixed((((A_long)yL << 16) + letP->y_offF)/letP->scaleFactorF);
             
             
-            ERR(suites.SamplingFloatSuite1()->nn_sample_float(stuffP->in_data.effect_ref,
+            ERR(suites.SamplingFloatSuite1()->nn_sample_float(letP->in_data.effect_ref,
                                                                     new_xFi,
                                                                     new_yFi, 
-                                                                    &stuffP->samp_pb,
+                                                                    &letP->samp_pb,
                                                                     outP));
                 
-                outP->red =   (outP->red   *   CalculateBox(refcon, xL, yL)+ (stuffP->Color32.red * (1- CalculateBox(refcon, xL, yL))));
-                outP->green = (outP->green *   CalculateBox(refcon, xL, yL)+ (stuffP->Color32.green * (1- CalculateBox(refcon, xL, yL))));
-                outP->blue =  (outP->blue   *   CalculateBox(refcon, xL, yL)+ (stuffP->Color32.blue * (1- CalculateBox(refcon, xL, yL))));
+                outP->red =   (outP->red   *   CalculateBox(refcon, xL, yL)+ (letP->Color32.red * (1- CalculateBox(refcon, xL, yL))));
+                outP->green = (outP->green *   CalculateBox(refcon, xL, yL)+ (letP->Color32.green * (1- CalculateBox(refcon, xL, yL))));
+                outP->blue =  (outP->blue   *   CalculateBox(refcon, xL, yL)+ (letP->Color32.blue * (1- CalculateBox(refcon, xL, yL))));
                 outP->alpha	= inP->alpha;
             }
             else
             {
-                outP->red =   (inP->red   *   CalculateBox(refcon, xL, yL)+ (stuffP->Color32.red * (1- CalculateBox(refcon, xL, yL))));
-                outP->green = (inP->green *   CalculateBox(refcon, xL, yL)+ (stuffP->Color32.green * (1- CalculateBox(refcon, xL, yL))));
-                outP->blue =  (inP->blue   *   CalculateBox(refcon, xL, yL)+ (stuffP->Color32.blue * (1- CalculateBox(refcon, xL, yL))));
+                outP->red =   (inP->red   *   CalculateBox(refcon, xL, yL)+ (letP->Color32.red * (1- CalculateBox(refcon, xL, yL))));
+                outP->green = (inP->green *   CalculateBox(refcon, xL, yL)+ (letP->Color32.green * (1- CalculateBox(refcon, xL, yL))));
+                outP->blue =  (inP->blue   *   CalculateBox(refcon, xL, yL)+ (letP->Color32.blue * (1- CalculateBox(refcon, xL, yL))));
                 outP->alpha	= inP->alpha;
                 
             }
@@ -925,12 +977,12 @@ PixelFuncBGRA_32f(
     PF_Pixel_BGRA_32f *inBGRA_32fP, *outBGRA_32fP;
     inBGRA_32fP = reinterpret_cast<PF_Pixel_BGRA_32f*>(inP);
     outBGRA_32fP = reinterpret_cast<PF_Pixel_BGRA_32f*>(outP);
-    prerender_stuff*	stuffP = reinterpret_cast<prerender_stuff*>(refcon);
+    prerender_letP*	letP = reinterpret_cast<prerender_letP*>(refcon);
     
-    if (stuffP) {
-        if (stuffP->PoTransparentB == TRUE)
+    if (letP) {
+        if (letP->PoTransparentB == TRUE)
         {
-            if (stuffP->Color.blue + stuffP->Color.green +stuffP->Color.red ==0)
+            if (letP->Color.blue + letP->Color.green +letP->Color.red ==0)
             {
                 outBGRA_32fP->blue =    0;
                 outBGRA_32fP->green =   0;
@@ -941,18 +993,18 @@ PixelFuncBGRA_32f(
             }
             else
             {
-            outBGRA_32fP->blue =    stuffP->Color.blue;
-            outBGRA_32fP->green =    stuffP->Color.green;
-                outBGRA_32fP->red =  stuffP->Color.blue;
+            outBGRA_32fP->blue =    letP->Color.blue;
+            outBGRA_32fP->green =    letP->Color.green;
+                outBGRA_32fP->red =  letP->Color.blue;
             outBGRA_32fP->alpha =   (1-(CalculateBox(refcon, xL, yL)));
             }
         }
         else
         {
             outBGRA_32fP->alpha = 1;
-            outBGRA_32fP->red =     inBGRA_32fP->red    *   CalculateBox(refcon, xL, yL)+ (stuffP->Color.red    * (1- CalculateBox(refcon, xL, yL)));
-            outBGRA_32fP->green =   inBGRA_32fP->green  *   CalculateBox(refcon, xL, yL)+ (stuffP->Color.green  * (1- CalculateBox(refcon, xL, yL)));
-            outBGRA_32fP->blue =    inBGRA_32fP->blue   *   CalculateBox(refcon, xL, yL)+ (stuffP->Color.blue   * (1- CalculateBox(refcon, xL, yL)));
+            outBGRA_32fP->red =     inBGRA_32fP->red    *   CalculateBox(refcon, xL, yL)+ (letP->Color.red    * (1- CalculateBox(refcon, xL, yL)));
+            outBGRA_32fP->green =   inBGRA_32fP->green  *   CalculateBox(refcon, xL, yL)+ (letP->Color.green  * (1- CalculateBox(refcon, xL, yL)));
+            outBGRA_32fP->blue =    inBGRA_32fP->blue   *   CalculateBox(refcon, xL, yL)+ (letP->Color.blue   * (1- CalculateBox(refcon, xL, yL)));
         }
     }
     return err;
@@ -970,22 +1022,22 @@ PixelFuncBGRA_8u(
     inBGRA_8uP = reinterpret_cast<PF_Pixel_BGRA_8u*>(inP);
     outBGRA_8uP = reinterpret_cast<PF_Pixel_BGRA_8u*>(outP);
     
-    prerender_stuff*	stuffP = reinterpret_cast<prerender_stuff*>(refcon);
+    prerender_letP*	letP = reinterpret_cast<prerender_letP*>(refcon);
     
-    if (stuffP) {
-        if (stuffP->PoTransparentB == TRUE)
+    if (letP) {
+        if (letP->PoTransparentB == TRUE)
         {
             outBGRA_8uP->alpha = A_u_short ( PF_MAX_CHAN8*(1-(CalculateBox(refcon, xL, yL))));
-            outBGRA_8uP->red = stuffP->Color.red;
-            outBGRA_8uP->green = stuffP->Color.green;
-            outBGRA_8uP->blue =stuffP->Color.blue;
+            outBGRA_8uP->red = letP->Color.red;
+            outBGRA_8uP->green = letP->Color.green;
+            outBGRA_8uP->blue =letP->Color.blue;
         }
         else
         {
             outBGRA_8uP->alpha =    PF_MAX_CHAN8;
-            outBGRA_8uP->red = A_u_short(inBGRA_8uP->red    *   CalculateBox(refcon, xL, yL)+ (stuffP->Color.red * (1- CalculateBox(refcon, xL, yL))));
-            outBGRA_8uP->green = A_u_short(inBGRA_8uP->green  *   CalculateBox(refcon, xL, yL)+ (stuffP->Color.green * (1- CalculateBox(refcon, xL, yL))));
-            outBGRA_8uP->blue = A_u_short(inBGRA_8uP->blue   *   CalculateBox(refcon, xL, yL)+ (stuffP->Color.blue * (1- CalculateBox(refcon, xL, yL))));
+            outBGRA_8uP->red = A_u_short(inBGRA_8uP->red    *   CalculateBox(refcon, xL, yL)+ (letP->Color.red * (1- CalculateBox(refcon, xL, yL))));
+            outBGRA_8uP->green = A_u_short(inBGRA_8uP->green  *   CalculateBox(refcon, xL, yL)+ (letP->Color.green * (1- CalculateBox(refcon, xL, yL))));
+            outBGRA_8uP->blue = A_u_short(inBGRA_8uP->blue   *   CalculateBox(refcon, xL, yL)+ (letP->Color.blue * (1- CalculateBox(refcon, xL, yL))));
         }
     }
     return err;
@@ -1007,18 +1059,18 @@ PixelFuncVUYA_8u(
     inVUYA_8uP = reinterpret_cast<PF_Pixel_VUYA_8u*>(inP);
     outVUYA_8uP = reinterpret_cast<PF_Pixel_VUYA_8u*>(outP);
     
-    prerender_stuff*	stuffP = reinterpret_cast<prerender_stuff*>(refcon);
+    prerender_letP*	letP = reinterpret_cast<prerender_letP*>(refcon);
     PF_Pixel_VUYA_8u ColorYuv;
     
-    if (stuffP) {
+    if (letP) {
         
 
-        ColorYuv.luma = A_u_char(  (0.257 * stuffP->Color.red) + (0.504 * stuffP->Color.green) + (0.098 * stuffP->Color.blue) + 16);
-        ColorYuv.Pb = A_u_char(-(0.148 * stuffP->Color.red) - (0.291 * stuffP->Color.green) + (0.439 * stuffP->Color.blue) + 128);
-        ColorYuv.Pr = A_u_char((0.439 * stuffP->Color.red) - (0.368 * stuffP->Color.green) - (0.071 * stuffP->Color.blue) + 128);
+        ColorYuv.luma = A_u_char(  (0.257 * letP->Color.red) + (0.504 * letP->Color.green) + (0.098 * letP->Color.blue) + 16);
+        ColorYuv.Pb = A_u_char(-(0.148 * letP->Color.red) - (0.291 * letP->Color.green) + (0.439 * letP->Color.blue) + 128);
+        ColorYuv.Pr = A_u_char((0.439 * letP->Color.red) - (0.368 * letP->Color.green) - (0.071 * letP->Color.blue) + 128);
         
 
-        if (stuffP->PoTransparentB == TRUE)
+        if (letP->PoTransparentB == TRUE)
         {
             outVUYA_8uP->alpha   = A_u_short(PF_MAX_CHAN8*(1 - (CalculateBox(refcon, xL, yL))));
             outVUYA_8uP->luma =   ColorYuv.luma;
@@ -1541,37 +1593,37 @@ Render(	PF_InData		*in_data,
     PF_EffectWorld  *inputP  = &params[LETB_INPUT]->u.ld;
     
 
-    prerender_stuff		stuffP;
+    prerender_letP		letP;
     PF_LayerDef		 *posOutput = output;
 
-    stuffP.in_data = *in_data;
-    stuffP.samp_pb.src = inputP;
+    letP.in_data = *in_data;
+    letP.samp_pb.src = inputP;
     
-    stuffP.InputWidthF  = in_data->width; 
-    stuffP.InputHeightF  = in_data->height;
-    stuffP.PixRatioNumF = in_data->pixel_aspect_ratio.num;
-    stuffP.PixRatioDenF = in_data->pixel_aspect_ratio.den;
+    letP.InputWidthF  = in_data->width; 
+    letP.InputHeightF  = in_data->height;
+    letP.PixRatioNumF = in_data->pixel_aspect_ratio.num;
+    letP.PixRatioDenF = in_data->pixel_aspect_ratio.den;
    
     PF_FpLong scale_x = in_data->downsample_x.num/ (float)in_data->downsample_x.den,
                 scale_y = in_data->downsample_y.num/ (float)in_data->downsample_y.den;
     
-    stuffP.InputWidthF  *= scale_x;
-    stuffP.InputHeightF  *= scale_y;
+    letP.InputWidthF  *= scale_x;
+    letP.InputHeightF  *= scale_y;
     
-     stuffP.layerRatioF = (((double)in_data->width) *  stuffP.PixRatioNumF) / ((double)in_data->height*stuffP.PixRatioDenF); //ratio input from layer
+     letP.layerRatioF = (((double)in_data->width) *  letP.PixRatioNumF) / ((double)in_data->height*letP.PixRatioDenF); //ratio input from layer
     
 
-    stuffP.Color = params[LETB_COLOR]->u.cd.value;
-    stuffP.PoTransparentB = params[LETB_TRSP]->u.bd.value;
+    letP.Color = params[LETB_COLOR]->u.cd.value;
+    letP.PoTransparentB = params[LETB_TRSP]->u.bd.value;
     
 
 
     if (in_data->appl_id == 'PrMr') {
 
         if (MODE_BASIC == params[LETB_MODE]->u.pd.value){
-            GetPresetRatioValue( params[LETB_PRESET]->u.pd.value, &stuffP.userRatioF);
+            GetPresetRatioValue( params[LETB_PRESET]->u.pd.value, &letP.userRatioF);
         } else {
-            stuffP.userRatioF = params[LETB_SLIDER]->u.fs_d.value;
+            letP.userRatioF = params[LETB_SLIDER]->u.fs_d.value;
         }
         
         //POSITION PART
@@ -1640,7 +1692,7 @@ Render(	PF_InData		*in_data,
                                        (output->extent_hint.bottom - output->extent_hint.top),                  // progress final
                                       posOutput,                                                                // src
                                        NULL,                                                                    // area - null for all pixels
-                                       (void*)&stuffP,                                                          // refcon - your custom data pointer
+                                       (void*)&letP,                                                          // refcon - your custom data pointer
                                        PixelFuncBGRA_8u,                                                        // pixel function pointer
                                        output);
                 
@@ -1670,7 +1722,7 @@ Render(	PF_InData		*in_data,
                                        (output->extent_hint.bottom - output->extent_hint.top),		// progress final
                                        posOutput,                                                   // src
                                        NULL,                                                        // area - null for all pixels
-                                       (void*)&stuffP,                                              // refcon - your custom data pointer
+                                       (void*)&letP,                                              // refcon - your custom data pointer
                                        PixelFuncVUYA_8u,                                            // pixel function pointer
                                        output);
                 
@@ -1701,7 +1753,7 @@ Render(	PF_InData		*in_data,
                              0,                                                                     // progress base
                              (output->extent_hint.bottom - output->extent_hint.top),                // progress final
                              posOutput,
-                             (void*)&stuffP,                                                        // refcon - your custom data pointer
+                             (void*)&letP,                                                        // refcon - your custom data pointer
                              PixelFuncBGRA_32f,                                                     // pixel function pointer
                              output);
                 
@@ -1733,24 +1785,35 @@ PreRender(
 
 	PF_CheckoutResult		in_result;
 	AEGP_SuiteHandler		suites(in_data->pica_basicP);
-    PF_ParamDef  displace_param, scale_param;
+    PF_ParamDef  displace_param, scale_param, safeMode_param;
 
-	PF_Handle	infoH		=	suites.HandleSuite1()->host_new_handle(sizeof(prerender_stuff));
+	PF_Handle	infoH		=	suites.HandleSuite1()->host_new_handle(sizeof(prerender_letP));
 
-	prerender_stuff		*stuffP = NULL;
-    AEGP_LayerH		layerH;
-    AEGP_StreamType streamH;
-    AEGP_StreamVal2	streamValP;
-    A_Time lay_time;
-    
+	prerender_letP		*letP = NULL;
 
-    
-    
 
 	if (infoH){
-		stuffP = reinterpret_cast<prerender_stuff*>(suites.HandleSuite1()->host_lock_handle(infoH));
-		if (stuffP){
+		letP = reinterpret_cast<prerender_letP*>(suites.HandleSuite1()->host_lock_handle(infoH));
+		if (letP){
 			extraP->output->pre_render_data = infoH;
+            
+            
+            //Comunicate with AEGP to get the informations about layer/composition paramaters needed.
+            if (extraP->cb->GuidMixInPtr) {
+                GetLayerProperties(in_data,& letP->positionTD, &letP->scaleTD, &letP->acPointTD);
+                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->positionTD), reinterpret_cast<void *>(&letP->positionTD));
+                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->scaleTD), reinterpret_cast<void *>(&letP->scaleTD));
+                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->acPointTD), reinterpret_cast<void *>(&letP->acPointTD));
+            }
+            if (extraP->cb->GuidMixInPtr) {
+                GetCompProperties(in_data, &letP->compWidthA, &letP->compHeightA, &letP->dsfP);
+                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->compWidthA), reinterpret_cast<void *>(&letP->compWidthA));
+                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->compHeightA), reinterpret_cast<void *>(&letP->compHeightA));
+                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->dsfP), reinterpret_cast<void *>(&letP->dsfP));
+            }
+            
+            
+
             
             AEFX_CLR_STRUCT(displace_param);
             ERR(PF_CHECKOUT_PARAM(	in_data,
@@ -1761,7 +1824,7 @@ PreRender(
                                   &displace_param));
             ERR2(PF_CHECKIN_PARAM(in_data, &displace_param));
             
-            
+            AEFX_CLR_STRUCT(scale_param);
             ERR(PF_CHECKOUT_PARAM(in_data,
                                   LETB_RESIZE,
                                   in_data->current_time,
@@ -1772,17 +1835,24 @@ PreRender(
             PF_FpLong  scaleFactorF;
             scaleFactorF  = scale_param.u.fs_d.value/100;
             ERR2(PF_CHECKIN_PARAM(in_data, &scale_param));
-            /*
-            ERR(suites.LayerSuite8()->AEGP_GetActiveLayer(&layerH));
-            if (!err)
-            {
-                ERR2(suites.StreamSuite4()->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_SCALE,AEGP_LTimeMode_CompTime,&lay_time, false, &streamValP, &streamH));
-
-            }
             
- 
-             stuffP->scaleFactorxF = streamValP.three_d.x/100;
-             stuffP->scaleFactoryF = streamValP.three_d.y/100;*/
+            AEFX_CLR_STRUCT(safeMode_param);
+            ERR(PF_CHECKOUT_PARAM(in_data,
+                                  LETB_FORCE_SCALE,
+                                  in_data->current_time,
+                                  in_data->time_step,
+                                  in_data->time_scale,
+                                  &safeMode_param));
+            PF_Boolean safeMode;
+            if (safeMode_param.u.bd.value ==1)
+            {
+                safeMode =TRUE;
+            }
+            else
+            {
+              safeMode =FALSE;
+            }
+            ERR2(PF_CHECKIN_PARAM(in_data, &safeMode_param));
             
 
 			AEFX_CLR_STRUCT(in_result);
@@ -1801,13 +1871,49 @@ PreRender(
 												in_data->time_scale,
 												&in_result));
 				if (!err){
-                    AEFX_CLR_STRUCT(*stuffP);
+                    AEFX_CLR_STRUCT(*letP);
+                    
+                    
+                    letP->PixRatioNumF = in_data->pixel_aspect_ratio.num;
+                    letP->PixRatioDenF = in_data->pixel_aspect_ratio.den;
+                    PF_FpLong scale_x = in_data->downsample_x.num / (float)in_data->downsample_x.den,
+                              scale_y = in_data->downsample_y.num / (float)in_data->downsample_y.den;
+                    
+                    
+                    letP->InputWidthF  = in_data->width;
+                    letP->InputHeightF  = in_data->height;
+                    
+                    //DOWNSCALE
+                    letP->compWidthA*= letP->dsfP.xS;
+                    letP->compHeightA*= letP->dsfP.yS;
+                    letP->InputWidthF  *= scale_x;
+                    letP->InputHeightF  *= scale_y;
+                    
+                    letP->positionTD.x *= scale_x;
+                    letP->positionTD.y *= scale_y;
+                    
+                    
+                    letP->layerRatioF = (((double)in_data->width) *  letP->PixRatioNumF) / ((double)in_data->height*letP->PixRatioDenF); //ratio input from layer;
+                    letP->compRatioF = (((double)letP->compWidthA) *  letP->dsfP.xS) / ((double)letP->compHeightA*letP->dsfP.yS); //ratio from the current comp;
+
+                    
                     PF_Fixed 	widthF	= INT2FIX(ABS(in_result.max_result_rect.right - in_result.max_result_rect.left)),
                                 heightF = INT2FIX(ABS(in_result.max_result_rect.bottom - in_result.max_result_rect.top));
 
+                    if (safeMode ==TRUE)
+                    {
+                        letP->x_offF = PF_Fixed((widthF*(scaleFactorF)/2) - (displace_param.u.td.x_value + letP->compWidthA*0.5 -letP->positionTD.x));
+                        letP->y_offF = PF_Fixed((heightF*(scaleFactorF)/2) - (displace_param.u.td.y_value  + letP->compHeightA*0.5-letP->positionTD.y));
+                        
+                    }
+                    else
+                    {
+                        letP->x_offF = PF_Fixed((widthF*scaleFactorF/2) - displace_param.u.td.x_value);
+                        letP->y_offF = PF_Fixed((heightF*scaleFactorF/2) - displace_param.u.td.y_value);
+                    }
+                   
                     
-                    stuffP->x_offF = PF_Fixed((widthF*scaleFactorF/2) - displace_param.u.td.x_value);
-                    stuffP->y_offF = PF_Fixed((heightF*scaleFactorF/2) - displace_param.u.td.y_value);
+                    
                     
 					UnionLRect(&in_result.result_rect, 		&extraP->output->result_rect);
 					UnionLRect(&in_result.max_result_rect, 	&extraP->output->max_result_rect);	
@@ -1843,7 +1949,6 @@ SmartRender(
 
     PF_ParamDef params[LETB_NUM_PARAMS];
     PF_ParamDef *paramsP[LETB_NUM_PARAMS];
-    
     AEFX_CLR_STRUCT(params);
     
     for (int i = 0; i < LETB_NUM_PARAMS; i++)
@@ -1860,28 +1965,17 @@ SmartRender(
 							(void**)&wsP));
 	if (!err && wsP && seqP){
 
-		prerender_stuff *stuffP = reinterpret_cast<prerender_stuff*>(suites.HandleSuite1()->host_lock_handle(reinterpret_cast<PF_Handle>(extraP->input->pre_render_data)));
+		prerender_letP *letP = reinterpret_cast<prerender_letP*>(suites.HandleSuite1()->host_lock_handle(reinterpret_cast<PF_Handle>(extraP->input->pre_render_data)));
         
-		if (stuffP){
+		if (letP){
             
-			stuffP->InputWidthF  = in_data->width;
-			stuffP->InputHeightF  = in_data->height;
-			stuffP->PixRatioNumF = in_data->pixel_aspect_ratio.num;
-			stuffP->PixRatioDenF = in_data->pixel_aspect_ratio.den;
-			PF_FpLong scale_x = in_data->downsample_x.num / (float)in_data->downsample_x.den,
-                    scale_y = in_data->downsample_y.num / (float)in_data->downsample_y.den;
 
-            stuffP->InputWidthF  *= scale_x;
-            stuffP->InputHeightF  *= scale_y;
-            
-            stuffP->layerRatioF = (((double)in_data->width) *  stuffP->PixRatioNumF) / ((double)in_data->height*stuffP->PixRatioDenF); //ratio input from layer
-            
 
 			// checkout input & output buffers.
 			ERR((extraP->cb->checkout_layer_pixels(	in_data->effect_ref, LETB_INPUT, &inputP)));
 			ERR(extraP->cb->checkout_output(in_data->effect_ref, &outputP));
-            stuffP->in_data = *in_data;
-            stuffP->samp_pb.src = inputP;
+            letP->in_data = *in_data;
+            letP->samp_pb.src = inputP;
             
 
             // determine requested output depth
@@ -1897,7 +1991,7 @@ SmartRender(
                                   in_data->time_scale,
                                   &params[LETB_PRESET]));
             
-             GetPresetRatioValue(params[LETB_PRESET].u.pd.value, &stuffP->PreseTvalueF);
+             GetPresetRatioValue(params[LETB_PRESET].u.pd.value, &letP->PreseTvalueF);
            
             ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_PRESET]));
             
@@ -1910,7 +2004,7 @@ SmartRender(
                                   in_data->time_scale,
                                   &params[LETB_SLIDER]));
             
-            stuffP->SlidervalueF =params[LETB_SLIDER].u.fs_d.value;
+            letP->SlidervalueF =params[LETB_SLIDER].u.fs_d.value;
             ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_SLIDER]));
             
             
@@ -1926,7 +2020,7 @@ SmartRender(
             A_long tempMode;
             
             GetModeValue(params[LETB_MODE].u.pd.value, &tempMode);
-            stuffP->userRatioF = (stuffP->PreseTvalueF * ABS(tempMode-1) )+ (stuffP->SlidervalueF * tempMode);
+            letP->userRatioF = (letP->PreseTvalueF * ABS(tempMode-1) )+ (letP->SlidervalueF * tempMode);
             ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_MODE]));
             
             ERR(PF_CHECKOUT_PARAM(in_data,
@@ -1935,7 +2029,7 @@ SmartRender(
                                   in_data->time_step,
                                   in_data->time_scale,
                                   &params[LETB_TRSP]));
-            stuffP->PoTransparentB = params[LETB_TRSP].u.bd.value;
+            letP->PoTransparentB = params[LETB_TRSP].u.bd.value;
             ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_TRSP]));
             
             
@@ -1948,8 +2042,8 @@ SmartRender(
                                   &params[LETB_COLOR]));
             
 
-            stuffP->Color = params[LETB_COLOR].u.cd.value;
-            ERR(suites.ColorParamSuite1()->PF_GetFloatingPointColorFromColorDef(in_data->effect_ref, &params[LETB_COLOR], &stuffP->Color32));
+            letP->Color = params[LETB_COLOR].u.cd.value;
+            ERR(suites.ColorParamSuite1()->PF_GetFloatingPointColorFromColorDef(in_data->effect_ref, &params[LETB_COLOR], &letP->Color32));
 
             ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_COLOR]));
             
@@ -1961,7 +2055,7 @@ SmartRender(
                                   &params[LETB_RESIZE]));
             
             
-            stuffP->scaleFactorF = params[LETB_RESIZE].u.fs_d.value/100;
+            letP->scaleFactorF = params[LETB_RESIZE].u.fs_d.value/100;
             ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_RESIZE]));
             
             
@@ -1977,11 +2071,11 @@ SmartRender(
             GetModeValue(params[LETB_SIZE_SOURCE].u.pd.value, &tempCompMode);
             if (tempCompMode ==1)
             {
-                stuffP->compModeB = true;
+                letP->compModeB = true;
             }
             else
             {
-                stuffP->compModeB = false;
+                letP->compModeB = false;
             }
             ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_MODE]));
             
@@ -1994,7 +2088,7 @@ SmartRender(
                                   in_data->time_scale,
                                   &params[LETB_TRSP]));
             
-            stuffP->forceScaleB= params[LETB_TRSP].u.bd.value;
+            letP->forceScaleB= params[LETB_TRSP].u.bd.value;
             ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_TRSP]));
 
 
@@ -2009,7 +2103,7 @@ SmartRender(
                                                                 inputP,
 																&outputP->extent_hint,
                                                                 &originPt,
-																(void*)stuffP,
+																(void*)letP,
 																PixelFuncFloat,
 																outputP));
 					break;
@@ -2022,7 +2116,7 @@ SmartRender(
                                                                 inputP,
                                                                 &outputP->extent_hint,
                                                                 &originPt,
-                                                                 (void*)stuffP,
+                                                                 (void*)letP,
                                                                  PixelFunc16,
                                                                  outputP));
 					break;
@@ -2041,7 +2135,7 @@ SmartRender(
                                                             inputP,
 															&outputP->extent_hint,
                                                             &originPt,
-															(void*)stuffP,
+															(void*)letP,
 															PixelFunc8,
 															outputP));
 
@@ -2063,7 +2157,24 @@ SmartRender(
 	return err;
 }
 
-
+static PF_Err
+RespondtoAEGP (
+               PF_InData		*in_data,
+               PF_OutData		*out_data,
+               PF_ParamDef		*params[],
+               PF_LayerDef		*output,
+               void*			extraP)
+{
+    PF_Err			err = PF_Err_NONE;
+    
+    AEGP_SuiteHandler suites(in_data->pica_basicP);
+    
+    suites.ANSICallbacksSuite1()->sprintf(	out_data->return_msg,
+                                          "%s",
+                                          reinterpret_cast<A_char*>(extraP));
+    
+    return err;
+}
 
 
 DllExport	PF_Err 
@@ -2104,6 +2215,14 @@ EntryPointFunc(
 									params,
 									output);
 				break;
+            
+            case PF_Cmd_COMPLETELY_GENERAL:
+                err = RespondtoAEGP(in_data,
+                                    out_data,
+                                    params,
+                                    output,
+                                    extra);
+                break;
                 
 
 			case PF_Cmd_SEQUENCE_SETUP:

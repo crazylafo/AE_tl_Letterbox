@@ -109,19 +109,27 @@ typedef struct {
     PF_FpLong           SlidervalueF;
     PF_Pixel            Color;
     PF_Pixel32          Color32;
-    PF_Fixed            x_offF;
-    PF_Fixed            y_offF;
     PF_FpLong           scaleFactorF;
     PF_FpLong           scaleFactorxF;
     PF_FpLong           scaleFactoryF;
     PF_Boolean          compModeB;
     PF_Boolean          forceScaleB;
     
-    
-    
+    PF_Fixed            x_offF;
+    PF_Fixed            y_offF;
+    PF_Fixed            xComp_offF;
+    PF_Fixed            yComp_offF;
 
-
-} prerender_stuff, *pre_render_stuffP, **pre_render_stuffH;
+    
+    AEGP_ThreeDVal          positionTD;
+    AEGP_ThreeDVal          scaleTD;
+    AEGP_ThreeDVal          acPointTD;
+    A_long                  compWidthA;
+    A_long                 compHeightA;
+    AEGP_DownsampleFactor dsfP;
+    PF_FpLong              compRatioF;
+    
+} prerender_letP, *pre_render_letPP, **pre_render_letPH;
 
 
 enum {
@@ -150,24 +158,21 @@ enum {
 enum {
 	LETB_MODE_DISK_ID = 1,
 	LETB_PRESET_DISK_ID,
-	LETB_GROUP_START_DISK_ID,
 	LETB_SLIDER_DISK_ID,
+    LETB_TRSP_DISK_ID,
+    LETB_COLOR_DISK_ID,
+    TOPIC_GR1_DISK_ID,
+    LETB_CENTER_DISK_ID,
+    LETB_RESIZE_DISK_ID,
+    END_TOPIC_GR1_DISK_ID,
+    TOPIC_GR2_DISK_ID,
+    LETB_LAYER_ANALYS_DISK_ID,
     LETB_CHECKBOX_DISK_ID,
-    	LETB_TRSP_DISK_ID,
-    	LETB_COLOR_DISK_ID,
-    	TOPIC_GR1_DISK_ID,
-    	LETB_CENTER_DISK_ID,
-    	LETB_RESIZE_DISK_ID,
-    	END_TOPIC_GR1_DISK_ID,
-    	LETB_GROUP_END_DISK_ID,
-    	TOPIC_GR2_DISK_ID,
-    	LETB_LAYER_ANALYS_DISK_ID,
-    
-    	END_TOPIC_GR2_DISK_ID,
-    	TOPIC_GR3_DISK_ID,
-    	LETB_SIZE_SOURCE_DISK_ID,
-    	LETB_FORCE_SCALE_DISK_ID,
-    	END_TOPIC_GR3_DISK_ID,
+    END_TOPIC_GR2_DISK_ID,
+    TOPIC_GR3_DISK_ID,
+    LETB_SIZE_SOURCE_DISK_ID,
+    LETB_FORCE_SCALE_DISK_ID,
+    END_TOPIC_GR3_DISK_ID,
 };
 
 extern "C" {
