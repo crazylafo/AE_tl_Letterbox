@@ -13,7 +13,7 @@ resource 'PiPL' (16000) {
 		},
 		/* [2] */
 		Name {
-			"tl_Letterbox"
+			"Tl_Letterbox"
 		},
 		/* [3] */
 		Category {
@@ -52,14 +52,14 @@ resource 'PiPL' (16000) {
 		},
 		/* [10] */
 		AE_Effect_Global_OutFlags {
-			0x6000440
+			0x6000442
 		},
 		AE_Effect_Global_OutFlags_2 {
-			0x201448
+			0x21448
 		},
 		/* [11] */
 		AE_Effect_Match_Name {
-			"ADBE Letterbox"
+			"Tl_letterbox"
 		},
 		/* [12] */
 		AE_Reserved_Info {

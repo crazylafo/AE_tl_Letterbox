@@ -216,7 +216,7 @@ ParamsSetup(
 					PF_Precision_THOUSANDTHS,
 					0,
 					PF_ParamFlag_EXCLUDE_FROM_HAVE_INPUTS_CHANGED,
-					LETB_SLIDER_DISK_ID);
+					LETB_RATIO_DISK_ID);
 	
 
 
@@ -307,7 +307,7 @@ ParamsSetup(
                         "Get the ratio of the layer size",
                         FALSE,
                         0,
-                        LETB_CHECKBOX_DISK_ID);
+                        LETB_DETECT_DISK_ID);
         
         
     }
@@ -317,7 +317,7 @@ ParamsSetup(
                         STR(StrID_CheckboxCaption),
                         FALSE,
                         0,
-                        LETB_CHECKBOX_DISK_ID);
+                        LETB_DETECT_DISK_ID);
     }
      AEFX_CLR_STRUCT(def);
     
