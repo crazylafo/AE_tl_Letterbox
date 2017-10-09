@@ -1785,7 +1785,7 @@ PreRender(
 
 	PF_CheckoutResult		in_result;
 	AEGP_SuiteHandler		suites(in_data->pica_basicP);
-    PF_ParamDef  displace_param, scale_param, safeMode_param;
+    PF_ParamDef             param_center, param_scale,  param_force_size, param_size_source;
 
 	PF_Handle	infoH		=	suites.HandleSuite1()->host_new_handle(sizeof(prerender_letP));
 
@@ -1796,64 +1796,6 @@ PreRender(
 		letP = reinterpret_cast<prerender_letP*>(suites.HandleSuite1()->host_lock_handle(infoH));
 		if (letP){
 			extraP->output->pre_render_data = infoH;
-            
-            
-            //Comunicate with AEGP to get the informations about layer/composition paramaters needed.
-            if (extraP->cb->GuidMixInPtr) {
-                GetLayerProperties(in_data,& letP->positionTD, &letP->scaleTD, &letP->acPointTD);
-                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->positionTD), reinterpret_cast<void *>(&letP->positionTD));
-                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->scaleTD), reinterpret_cast<void *>(&letP->scaleTD));
-                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->acPointTD), reinterpret_cast<void *>(&letP->acPointTD));
-            }
-            if (extraP->cb->GuidMixInPtr) {
-                GetCompProperties(in_data, &letP->compWidthA, &letP->compHeightA, &letP->dsfP);
-                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->compWidthA), reinterpret_cast<void *>(&letP->compWidthA));
-                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->compHeightA), reinterpret_cast<void *>(&letP->compHeightA));
-                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->dsfP), reinterpret_cast<void *>(&letP->dsfP));
-            }
-            
-            
-
-            
-            AEFX_CLR_STRUCT(displace_param);
-            ERR(PF_CHECKOUT_PARAM(	in_data,
-                                  LETB_CENTER,
-                                  in_data->current_time,
-                                  in_data->time_step,
-                                  in_data->time_scale,
-                                  &displace_param));
-            ERR2(PF_CHECKIN_PARAM(in_data, &displace_param));
-            
-            AEFX_CLR_STRUCT(scale_param);
-            ERR(PF_CHECKOUT_PARAM(in_data,
-                                  LETB_RESIZE,
-                                  in_data->current_time,
-                                  in_data->time_step,
-                                  in_data->time_scale,
-                                  &scale_param));
-            
-            PF_FpLong  scaleFactorF;
-            scaleFactorF  = scale_param.u.fs_d.value/100;
-            ERR2(PF_CHECKIN_PARAM(in_data, &scale_param));
-            
-            AEFX_CLR_STRUCT(safeMode_param);
-            ERR(PF_CHECKOUT_PARAM(in_data,
-                                  LETB_FORCE_SCALE,
-                                  in_data->current_time,
-                                  in_data->time_step,
-                                  in_data->time_scale,
-                                  &safeMode_param));
-            PF_Boolean safeMode;
-            if (safeMode_param.u.bd.value ==1)
-            {
-                safeMode =TRUE;
-            }
-            else
-            {
-              safeMode =FALSE;
-            }
-            ERR2(PF_CHECKIN_PARAM(in_data, &safeMode_param));
-            
 
 			AEFX_CLR_STRUCT(in_result);
 
@@ -1872,6 +1814,80 @@ PreRender(
 												&in_result));
 				if (!err){
                     AEFX_CLR_STRUCT(*letP);
+                    
+                    //Comunicate with AEGP to get the informations about layer/composition paramaters needed.
+                    if (extraP->cb->GuidMixInPtr) {
+                        GetLayerProperties(in_data,& letP->positionTD, &letP->scaleTD, &letP->acPointTD);
+                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->positionTD), reinterpret_cast<void *>(&letP->positionTD));
+                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->scaleTD), reinterpret_cast<void *>(&letP->scaleTD));
+                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->acPointTD), reinterpret_cast<void *>(&letP->acPointTD));
+                    }
+                    if (extraP->cb->GuidMixInPtr) {
+                        GetCompProperties(in_data, &letP->compWidthA, &letP->compHeightA, &letP->dsfP);
+                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->compWidthA), reinterpret_cast<void *>(&letP->compWidthA));
+                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->compHeightA), reinterpret_cast<void *>(&letP->compHeightA));
+                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->dsfP), reinterpret_cast<void *>(&letP->dsfP));
+                    }
+                    
+                    
+                    
+                    AEFX_CLR_STRUCT(param_center);
+                    ERR(PF_CHECKOUT_PARAM(	in_data,
+                                          LETB_CENTER,
+                                          in_data->current_time,
+                                          in_data->time_step,
+                                          in_data->time_scale,
+                                          &param_center));
+                    
+                    letP->x_tA =   param_center.u.td.x_value;
+                     letP->y_tA =  param_center.u.td.y_value;
+                    ERR2(PF_CHECKIN_PARAM(in_data, &param_center));
+                    
+                    AEFX_CLR_STRUCT(param_scale);
+                    ERR(PF_CHECKOUT_PARAM(in_data,
+                                          LETB_RESIZE,
+                                          in_data->current_time,
+                                          in_data->time_step,
+                                          in_data->time_scale,
+                                          &param_scale));
+                    
+                    
+                    letP->scaleFactorF = param_scale.u.fs_d.value/100;
+                    ERR2(PF_CHECKIN_PARAM(in_data, &param_scale));
+                    
+                    AEFX_CLR_STRUCT(param_size_source);
+                    ERR(PF_CHECKOUT_PARAM(in_data,
+                                          LETB_SIZE_SOURCE,
+                                          in_data->current_time,
+                                          in_data->time_step,
+                                          in_data->time_scale,
+                                          &param_size_source));
+                    
+                    A_long tempCompMode;
+                    GetModeValue(param_size_source.u.pd.value, &tempCompMode);
+                    if (tempCompMode ==1)
+                    {
+                        letP->compModeB = true;
+                    }
+                    else
+                    {
+                        letP->compModeB = false;
+                    }
+                    ERR2(PF_CHECKIN_PARAM(in_data, &param_size_source));
+                    
+                    
+                    
+                    
+                    AEFX_CLR_STRUCT( param_force_size);
+                    ERR(PF_CHECKOUT_PARAM(in_data,
+                                          LETB_FORCE_SCALE,
+                                          in_data->current_time,
+                                          in_data->time_step,
+                                          in_data->time_scale,
+                                          & param_force_size));
+                    
+                    letP->forceSizeB =param_force_size.u.bd.value;
+                    ERR2(PF_CHECKIN_PARAM(in_data, & param_force_size));
                     
                     
                     letP->PixRatioNumF = in_data->pixel_aspect_ratio.num;
@@ -1900,16 +1916,16 @@ PreRender(
                     PF_Fixed 	widthF	= INT2FIX(ABS(in_result.max_result_rect.right - in_result.max_result_rect.left)),
                                 heightF = INT2FIX(ABS(in_result.max_result_rect.bottom - in_result.max_result_rect.top));
 
-                    if (safeMode ==TRUE)
+                    if ( letP->forceSizeB ==TRUE)
                     {
-                        letP->x_offF = PF_Fixed((widthF*(scaleFactorF)/2) - (displace_param.u.td.x_value + letP->compWidthA*0.5 -letP->positionTD.x));
-                        letP->y_offF = PF_Fixed((heightF*(scaleFactorF)/2) - (displace_param.u.td.y_value  + letP->compHeightA*0.5-letP->positionTD.y));
+                        letP->x_offF = PF_Fixed((widthF*(letP->scaleFactorF)/2) - (letP->x_tA +letP->positionTD.x-letP->compWidthA*0.5));
+                        letP->y_offF = PF_Fixed((heightF*(letP->scaleFactorF )/2) - (letP->y_tA + letP->compHeightA*0.5-letP->positionTD.y));
                         
                     }
                     else
                     {
-                        letP->x_offF = PF_Fixed((widthF*scaleFactorF/2) - displace_param.u.td.x_value);
-                        letP->y_offF = PF_Fixed((heightF*scaleFactorF/2) - displace_param.u.td.y_value);
+                        letP->x_offF = PF_Fixed((widthF*letP->scaleFactorF /2) - letP->x_tA);
+                        letP->y_offF = PF_Fixed((heightF*letP->scaleFactorF /2) - letP->y_tA);
                     }
                    
                     
@@ -1947,14 +1963,9 @@ SmartRender(
     AEGP_SuiteHandler suites(in_data->pica_basicP);
     
 
-    PF_ParamDef params[LETB_NUM_PARAMS];
-    PF_ParamDef *paramsP[LETB_NUM_PARAMS];
-    AEFX_CLR_STRUCT(params);
-    
-    for (int i = 0; i < LETB_NUM_PARAMS; i++)
-    {
-        paramsP[i] = &params[i];
-    }
+    PF_ParamDef param_preset, param_slider, param_mode, param_trsp, param_color, param_layer_source, param_cb_detect;
+   
+
 
 	
 	ERR(AEFX_AcquireSuite(	in_data, 
@@ -1983,116 +1994,72 @@ SmartRender(
             originPt.h = (A_short)(in_data->output_origin_x);
             originPt.v = (A_short)(in_data->output_origin_y);
             
-            
+            AEFX_CLR_STRUCT(param_preset);
             ERR(PF_CHECKOUT_PARAM(in_data,
                                   LETB_PRESET,
                                   in_data->current_time,
                                   in_data->time_step,
                                   in_data->time_scale,
-                                  &params[LETB_PRESET]));
+                                  &param_preset));
             
-             GetPresetRatioValue(params[LETB_PRESET].u.pd.value, &letP->PreseTvalueF);
+             GetPresetRatioValue(param_preset.u.pd.value, &letP->PreseTvalueF);
            
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_PRESET]));
+            ERR2(PF_CHECKIN_PARAM(in_data, &param_preset));
             
             
-            
+            AEFX_CLR_STRUCT(param_slider);
             ERR(PF_CHECKOUT_PARAM(	in_data,
                                   LETB_SLIDER,
                                   in_data->current_time,
                                   in_data->time_step,
                                   in_data->time_scale,
-                                  &params[LETB_SLIDER]));
+                                  &param_slider));
             
-            letP->SlidervalueF =params[LETB_SLIDER].u.fs_d.value;
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_SLIDER]));
+            letP->SlidervalueF =param_slider.u.fs_d.value;
+            ERR2(PF_CHECKIN_PARAM(in_data, &param_slider));
             
             
-            
+            AEFX_CLR_STRUCT(param_mode);
             ERR(PF_CHECKOUT_PARAM(in_data,
                                   LETB_MODE,
                                   in_data->current_time,
                                   in_data->time_step,
                                   in_data->time_scale,
-                                  &params[LETB_MODE]));
+                                  &param_mode));
             
             
             A_long tempMode;
             
-            GetModeValue(params[LETB_MODE].u.pd.value, &tempMode);
+            GetModeValue(param_mode.u.pd.value, &tempMode);
             letP->userRatioF = (letP->PreseTvalueF * ABS(tempMode-1) )+ (letP->SlidervalueF * tempMode);
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_MODE]));
+            ERR2(PF_CHECKIN_PARAM(in_data, &param_mode));
             
+            AEFX_CLR_STRUCT(param_trsp);
             ERR(PF_CHECKOUT_PARAM(in_data,
                                   LETB_TRSP,
                                   in_data->current_time,
                                   in_data->time_step,
                                   in_data->time_scale,
-                                  &params[LETB_TRSP]));
-            letP->PoTransparentB = params[LETB_TRSP].u.bd.value;
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_TRSP]));
+                                  &param_trsp));
+            letP->PoTransparentB = param_trsp.u.bd.value;
+            ERR2(PF_CHECKIN_PARAM(in_data, &param_trsp));
             
             
-
+            AEFX_CLR_STRUCT(param_color);
             ERR(PF_CHECKOUT_PARAM(	in_data,
                                   LETB_COLOR,
                                   in_data->current_time,
                                   in_data->time_step,
                                   in_data->time_scale,
-                                  &params[LETB_COLOR]));
+                                  &param_color));
             
 
-            letP->Color = params[LETB_COLOR].u.cd.value;
-            ERR(suites.ColorParamSuite1()->PF_GetFloatingPointColorFromColorDef(in_data->effect_ref, &params[LETB_COLOR], &letP->Color32));
+            letP->Color = param_color.u.cd.value;
+            ERR(suites.ColorParamSuite1()->PF_GetFloatingPointColorFromColorDef(in_data->effect_ref, &param_color, &letP->Color32));
 
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_COLOR]));
-            
-            ERR(PF_CHECKOUT_PARAM(in_data,
-                                  LETB_RESIZE,
-                                  in_data->current_time,
-                                  in_data->time_step,
-                                  in_data->time_scale,
-                                  &params[LETB_RESIZE]));
-            
-            
-            letP->scaleFactorF = params[LETB_RESIZE].u.fs_d.value/100;
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_RESIZE]));
-            
-            
-            ERR(PF_CHECKOUT_PARAM(in_data,
-                                  LETB_SIZE_SOURCE,
-                                  in_data->current_time,
-                                  in_data->time_step,
-                                  in_data->time_scale,
-                                  &params[LETB_SIZE_SOURCE]));
-            
-            
-            A_long tempCompMode;
-            GetModeValue(params[LETB_SIZE_SOURCE].u.pd.value, &tempCompMode);
-            if (tempCompMode ==1)
-            {
-                letP->compModeB = true;
-            }
-            else
-            {
-                letP->compModeB = false;
-            }
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_MODE]));
-            
-            
-            
-            ERR(PF_CHECKOUT_PARAM(in_data,
-                                  LETB_TRSP,
-                                  in_data->current_time,
-                                  in_data->time_step,
-                                  in_data->time_scale,
-                                  &params[LETB_TRSP]));
-            
-            letP->forceScaleB= params[LETB_TRSP].u.bd.value;
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_TRSP]));
+            ERR2(PF_CHECKIN_PARAM(in_data, &param_color));
 
 
-            
 			switch (format) {
 				
 				case PF_PixelFormat_ARGB128:

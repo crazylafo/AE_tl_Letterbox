@@ -100,8 +100,8 @@ typedef struct {
 	PF_FpLong           InputHeightF;
 	PF_FpLong           PixRatioNumF;
 	PF_FpLong           PixRatioDenF;
-	A_long              x_tA;
-	A_long              y_tA;
+	PF_Fixed            x_tA;
+	PF_Fixed            y_tA;
 	PF_Boolean          PoTransparentB;
     PF_InData           in_data;
     PF_SampPB           samp_pb;
@@ -113,7 +113,7 @@ typedef struct {
     PF_FpLong           scaleFactorxF;
     PF_FpLong           scaleFactoryF;
     PF_Boolean          compModeB;
-    PF_Boolean          forceScaleB;
+    PF_Boolean          forceSizeB;
     
     PF_Fixed            x_offF;
     PF_Fixed            y_offF;

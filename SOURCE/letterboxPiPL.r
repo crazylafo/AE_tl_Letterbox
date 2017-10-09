@@ -13,7 +13,7 @@ resource 'PiPL' (16000) {
 		},
 		/* [2] */
 		Name {
-			"Tl_Letterbox"
+			"tl_Letterbox"
 		},
 		/* [3] */
 		Category {
@@ -44,7 +44,7 @@ resource 'PiPL' (16000) {
 		},
 		/* [8] */
 		AE_Effect_Version {
-			630274 /* 1.3.3.3.2 REALSE */
+			632322 /* 1.3.4.3.2 REALSE */
 		},
 		/* [9] */
 		AE_Effect_Info_Flags {
@@ -52,14 +52,14 @@ resource 'PiPL' (16000) {
 		},
 		/* [10] */
 		AE_Effect_Global_OutFlags {
-			0x6000442
+			0x6000440
 		},
 		AE_Effect_Global_OutFlags_2 {
-			0x21448
+			0x201448
 		},
 		/* [11] */
 		AE_Effect_Match_Name {
-			"Tl_letterbox"
+			"tl_letterbox"
 		},
 		/* [12] */
 		AE_Reserved_Info {
