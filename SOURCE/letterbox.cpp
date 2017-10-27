@@ -61,8 +61,8 @@ GlobalSetup (
 	//	the parameter group's) collapsed flag.
 	
 	out_data->out_flags2	=	PF_OutFlag2_PARAM_GROUP_START_COLLAPSED_FLAG	|
+                                PF_OutFlag2_SUPPORTS_SMART_RENDER				|
 								PF_OutFlag2_FLOAT_COLOR_AWARE					|
-								PF_OutFlag2_SUPPORTS_SMART_RENDER				|
 								PF_OutFlag2_DOESNT_NEED_EMPTY_PIXELS			|
 								PF_OutFlag2_I_MIX_GUID_DEPENDENCIES;
 
@@ -236,8 +236,7 @@ ParamsSetup(
     
     AEFX_CLR_STRUCT(def);
     
-    def.flags		|=	PF_ParamFlag_SUPERVISE |
-    PF_ParamFlag_CANNOT_TIME_VARY;
+    def.flags		|=	PF_ParamFlag_SUPERVISE;
     
     PF_ADD_COLOR(	STR(StrID_ColorName),
                  0,
@@ -692,60 +691,8 @@ GetRatioFromWorld (
     }
 }
 
-static A_Err
-GetCompProperties(
-                  PF_InData                        *in_data,
-                  A_long                           *compWidthA,
-                  A_long                           *compHeightA,
-                  AEGP_DownsampleFactor            *compDownSampleFactor)
-{
-    A_Err 			err = A_Err_NONE;
-    AEGP_SuiteHandler		suites(in_data->pica_basicP);
-    
-    
-    AEGP_CompH		compH;
-    AEGP_LayerH		layerH;
-    AEGP_ItemH		itemH;
-    
-    ERR (suites.PFInterfaceSuite1()->AEGP_GetEffectLayer(in_data->effect_ref, &layerH)); //return layer parent of the effect.
-    ERR(suites.LayerSuite8()->AEGP_GetLayerParentComp (layerH, &compH)); //return parent com
-    ERR(suites.CompSuite11()->AEGP_GetItemFromComp(compH, &itemH)); //return the item matricule of the comp
-    ERR(suites.ItemSuite9()->AEGP_GetItemDimensions (itemH, compWidthA,compHeightA)); //return width/height property
-    ERR(suites.CompSuite11()->AEGP_GetCompDownsampleFactor(compH, compDownSampleFactor));
 
-    return err;
-}
 
-static A_Err
-GetLayerProperties(
-                   PF_InData          *in_data,
-                   AEGP_ThreeDVal        *PosTD,
-                   AEGP_ThreeDVal        *ScaleTD,
-                   AEGP_ThreeDVal        *AcPointTD)
-{
-    A_Err 			err = A_Err_NONE;
-    AEGP_SuiteHandler		suites(in_data->pica_basicP);
-    
-    AEGP_LayerH		layerH;
-    A_Time          currT;
-    AEGP_StreamVal2  streamValPositionP, streamValScaleP, streamValAcP;;
-    AEGP_StreamType streamTypePositionP, streamTypeScaleP, streamTypeAcP;
-    
-    
-    currT.value= in_data->current_time;
-    currT.scale =in_data->time_scale;
-    
-    ERR (suites.PFInterfaceSuite1()->AEGP_GetEffectLayer(in_data->effect_ref, &layerH)); //return layer parent of the effect.
-    ERR (suites.StreamSuite4()->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_POSITION,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValPositionP, &streamTypePositionP));
-    *PosTD =streamValPositionP.three_d;
-    ERR (suites.StreamSuite4()->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_SCALE,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValScaleP, &streamTypeScaleP));
-    *ScaleTD =streamValScaleP.three_d;
-    ERR (suites.StreamSuite4()->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_ANCHORPOINT,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValAcP, &streamTypeAcP));
-    *AcPointTD =streamValAcP.three_d;
-
-    
-    return err;
-}
 
 static PF_FpLong
 CalculateBox(
@@ -756,21 +703,21 @@ CalculateBox(
 {
 	PF_Err		err = PF_Err_NONE;
 
-	PF_FpLong CondBlackHup, CondBlackHdown, CondBlackVleft, CondBlackVright;
+    PF_FpLong CondBlackHupF, CondBlackHdownF, CondBlackVleftF, CondBlackVrightF;
 	prerender_letP	*letP = reinterpret_cast<prerender_letP*>(refcon);
-
-
 
 	int userRatioInt = int(letP->userRatioF * 100);
 	int layerRatioInt = int(letP->layerRatioF * 100);
+    
+
 
 	//definitions for horizontal letterbox
-	CondBlackHup = (letP->InputHeightF  - (letP->InputWidthF  / letP->userRatioF)) / 2;
-	CondBlackHdown = letP->InputHeightF  - ((letP->InputHeightF  - (letP->InputWidthF  / letP->userRatioF)) / 2);
+    CondBlackHupF =   (letP->InputHeightF - (letP->InputWidthF/letP->userRatioF))/ 2;
+    CondBlackHdownF = (letP->InputHeightF  - ((letP->InputHeightF  - (letP->InputWidthF  / letP->userRatioF)) / 2)) + letP->y_offsetDownF;
 
 	//definitions for verticals letterbox
-	CondBlackVleft = ((letP->InputWidthF  - (letP->InputHeightF *letP->userRatioF)) / 2);
-	CondBlackVright = letP->InputWidthF  - ((letP->InputWidthF  - (letP->InputHeightF *letP->userRatioF)) / 2);
+    CondBlackVleftF = ((letP->InputWidthF  - (letP->InputHeightF  *  letP->userRatioF)) / 2); //-letP->x_offsetF;
+    CondBlackVrightF = letP->InputWidthF   - ((letP->InputWidthF  - (letP->InputHeightF *letP->userRatioF)) / 2)+letP->x_offsetF;
 
 
 	if (letP)
@@ -781,7 +728,7 @@ CalculateBox(
 		}
 		else if (letP->userRatioF > letP->layerRatioF) //if ratio from UI up to footage's ratio--> then mask the height
 		{
-			if (yL < (CondBlackHup) || yL >(CondBlackHdown))
+			if  (yL < (CondBlackHupF) || yL >(CondBlackHdownF))
 			{
 				return 0.0;
 			}
@@ -793,7 +740,7 @@ CalculateBox(
 		else if (letP->userRatioF < letP->layerRatioF) //if ratio from UI under to ratio footage--> then mask the width
 		{
 
-			if (xL <  CondBlackVleft || xL > CondBlackVright)
+			if (xL <  CondBlackVleftF || xL > CondBlackVrightF)
 			{
 				return 0.0;
 			}
@@ -1790,15 +1737,24 @@ PreRender(
 	PF_Handle	infoH		=	suites.HandleSuite1()->host_new_handle(sizeof(prerender_letP));
 
 	prerender_letP		*letP = NULL;
+    
+    AEGP_LayerH		layerH;
+    AEGP_CompH		compH;
+    AEGP_ItemH		itemH;
+    A_Time          currT;
+    AEGP_StreamVal2  streamValPositionP, streamValScaleP, streamValAcP;;
+    AEGP_StreamType streamTypePositionP, streamTypeScaleP, streamTypeAcP;
 
 
 	if (infoH){
 		letP = reinterpret_cast<prerender_letP*>(suites.HandleSuite1()->host_lock_handle(infoH));
 		if (letP){
+            AEFX_CLR_STRUCT(*letP);
+           
+            
 			extraP->output->pre_render_data = infoH;
-
-			AEFX_CLR_STRUCT(in_result);
-
+            
+             AEFX_CLR_STRUCT(in_result);
 			if (!err){
 				req.preserve_rgb_of_zero_alpha = TRUE;
                 req.field = PF_Field_FRAME;
@@ -1813,23 +1769,11 @@ PreRender(
 												in_data->time_scale,
 												&in_result));
 				if (!err){
-                    AEFX_CLR_STRUCT(*letP);
+                   
                     
-                    //Comunicate with AEGP to get the informations about layer/composition paramaters needed.
-                    if (extraP->cb->GuidMixInPtr) {
-                        GetLayerProperties(in_data,& letP->positionTD, &letP->scaleTD, &letP->acPointTD);
-                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->positionTD), reinterpret_cast<void *>(&letP->positionTD));
-                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->scaleTD), reinterpret_cast<void *>(&letP->scaleTD));
-                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->acPointTD), reinterpret_cast<void *>(&letP->acPointTD));
-                    }
-                    if (extraP->cb->GuidMixInPtr) {
-                        GetCompProperties(in_data, &letP->compWidthA, &letP->compHeightA, &letP->dsfP);
-                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->compWidthA), reinterpret_cast<void *>(&letP->compWidthA));
-                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->compHeightA), reinterpret_cast<void *>(&letP->compHeightA));
-                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->dsfP), reinterpret_cast<void *>(&letP->dsfP));
-                    }
-                    
-                    
+                   
+
+
                     
                     AEFX_CLR_STRUCT(param_center);
                     ERR(PF_CHECKOUT_PARAM(	in_data,
@@ -1865,17 +1809,7 @@ PreRender(
                     
                     A_long tempCompMode;
                     GetModeValue(param_size_source.u.pd.value, &tempCompMode);
-                    if (tempCompMode ==1)
-                    {
-                        letP->compModeB = true;
-                    }
-                    else
-                    {
-                        letP->compModeB = false;
-                    }
                     ERR2(PF_CHECKIN_PARAM(in_data, &param_size_source));
-                    
-                    
                     
                     
                     AEFX_CLR_STRUCT( param_force_size);
@@ -1889,6 +1823,71 @@ PreRender(
                     letP->forceSizeB =param_force_size.u.bd.value;
                     ERR2(PF_CHECKIN_PARAM(in_data, & param_force_size));
                     
+                    if (tempCompMode ==1)
+                    {
+                        letP->compModeB = true;
+                    }
+                    else
+                    {
+                        letP->compModeB = false;
+                    }
+                    if (extraP->cb->GuidMixInPtr)  //Comunicate with AEGP to get the informations about layer/composition paramaters needed.
+                    {
+                        
+                        
+                        
+                        AEFX_SuiteScoper<AEGP_PFInterfaceSuite1> PFInterfaceSuite = AEFX_SuiteScoper<AEGP_PFInterfaceSuite1>(	in_data,
+                                                                                                                             kAEGPPFInterfaceSuite,
+                                                                                                                             kAEGPPFInterfaceSuiteVersion1,
+                                                                                                                             out_data);
+                        AEFX_SuiteScoper<AEGP_LayerSuite8> layerSuite = AEFX_SuiteScoper<AEGP_LayerSuite8>(	in_data,
+                                                                                                           kAEGPLayerSuite,
+                                                                                                           kAEGPLayerSuiteVersion8,
+                                                                                                           out_data);
+                        AEFX_SuiteScoper<AEGP_CompSuite10> compSuite = AEFX_SuiteScoper<AEGP_CompSuite10>(  in_data,
+                                                                                                          kAEGPCompSuite,
+                                                                                                          kAEGPCompSuiteVersion10,
+                                                                                                          out_data);
+                        AEFX_SuiteScoper<AEGP_StreamSuite4> streamSuite = AEFX_SuiteScoper<AEGP_StreamSuite4>(  in_data,
+                                                                                                              kAEGPStreamSuite,
+                                                                                                              kAEGPStreamSuiteVersion4,
+                                                                                                              out_data);
+                        
+                        
+                        currT.value= in_data->current_time;
+                        currT.scale =in_data->time_scale;
+                        
+                        PFInterfaceSuite->AEGP_GetEffectLayer(in_data->effect_ref, &layerH); //return layer parent of the effect.
+                        //Get position param of the layer
+                        streamSuite ->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_POSITION,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValPositionP, &streamTypePositionP);
+                        letP->positionTD =streamValPositionP.three_d;
+                        //Get scale param of the layer
+                        streamSuite ->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_SCALE,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValScaleP, &streamTypeScaleP);
+                        letP->scaleTD =streamValScaleP.three_d;
+                        //Get anchor point param of the layer
+                        streamSuite ->AEGP_GetLayerStreamValue (layerH,AEGP_LayerStream_ANCHORPOINT,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValAcP, &streamTypeAcP);
+                        letP->acPointTD =streamValAcP.three_d;
+                        
+                        
+                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->positionTD), reinterpret_cast<void *>(&letP->positionTD));
+                        //extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->scaleTD), reinterpret_cast<void *>(&letP->scaleTD));
+                        //extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->acPointTD), reinterpret_cast<void *>(&letP->acPointTD));
+                        
+                        
+                        /*
+                         ERR(suites.LayerSuite8()->AEGP_GetLayerParentComp (layerH, &compH)); //return parent comp
+                         ERR(suites.CompSuite11()->AEGP_GetItemFromComp(compH, &itemH)); //return the item matricule of the comp
+                         
+                         ERR(suites.ItemSuite9()->AEGP_GetItemDimensions (itemH, &letP->compWidthA,&letP->compHeightA)); //return width/height property
+                         extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->compWidthA), reinterpret_cast<void *>(&letP->compWidthA));
+                         extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->compHeightA), reinterpret_cast<void *>(&letP->compHeightA));
+                         ERR(suites.CompSuite11()->AEGP_GetCompDownsampleFactor(compH, &letP->dsfP));
+                         extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->dsfP), reinterpret_cast<void *>(&letP->dsfP));
+                         */
+                    }
+                    
+                    
+
                     
                     letP->PixRatioNumF = in_data->pixel_aspect_ratio.num;
                     letP->PixRatioDenF = in_data->pixel_aspect_ratio.den;
@@ -1896,41 +1895,62 @@ PreRender(
                               scale_y = in_data->downsample_y.num / (float)in_data->downsample_y.den;
                     
                     
-                    letP->InputWidthF  = in_data->width;
-                    letP->InputHeightF  = in_data->height;
+                    letP->InputWidthF  = PF_FpLong (in_data->width);
+                    letP->InputHeightF  = PF_FpLong (in_data->height);
                     
                     //DOWNSCALE
-                    letP->compWidthA*= letP->dsfP.xS;
-                    letP->compHeightA*= letP->dsfP.yS;
-                    letP->InputWidthF  *= scale_x;
-                    letP->InputHeightF  *= scale_y;
+                    letP->compWidthA    *=  scale_x;
+                    letP->compHeightA   *=  scale_y;
+                    letP->InputWidthF   *=  scale_x;
+                    letP->InputHeightF  *=  scale_y;
                     
                     letP->positionTD.x *= scale_x;
                     letP->positionTD.y *= scale_y;
-                    
-                    
-                    letP->layerRatioF = (((double)in_data->width) *  letP->PixRatioNumF) / ((double)in_data->height*letP->PixRatioDenF); //ratio input from layer;
+
                     letP->compRatioF = (((double)letP->compWidthA) *  letP->dsfP.xS) / ((double)letP->compHeightA*letP->dsfP.yS); //ratio from the current comp;
-
                     
-                    PF_Fixed 	widthF	= INT2FIX(ABS(in_result.max_result_rect.right - in_result.max_result_rect.left)),
-                                heightF = INT2FIX(ABS(in_result.max_result_rect.bottom - in_result.max_result_rect.top));
-
-                    if ( letP->forceSizeB ==TRUE)
+                    if (letP->compModeB == true)
                     {
-                        letP->x_offF = PF_Fixed((widthF*(letP->scaleFactorF)/2) - (letP->x_tA +letP->positionTD.x-letP->compWidthA*0.5));
-                        letP->y_offF = PF_Fixed((heightF*(letP->scaleFactorF )/2) - (letP->y_tA + letP->compHeightA*0.5-letP->positionTD.y));
+                        //letP->InputWidthF  = PF_FpLong (letP->compWidthA);
+                        //letP->InputHeightF = PF_FpLong (letP->compHeightA);
+                        //letP->layerRatioF = letP->compRatioF;
+                   
                         
+                        letP->x_offsetF = letP->positionTD.x - letP->compWidthA*0.5;
+                        
+                        letP->y_offsetDownF =letP->positionTD.y/10; //  letP->compHeightA*0.5 - letP->positionTD.y;
+                        if (letP->positionTD.y > 0.5*letP->compHeightA)
+                        {
+                            letP->y_offsetUpF = 0 ;  //- ABS (letP->y_offsetDownF);
+                        }
+                        else
+                        {
+                            letP->y_offsetUpF = 0;
+                        }
                     }
                     else
                     {
-                        letP->x_offF = PF_Fixed((widthF*letP->scaleFactorF /2) - letP->x_tA);
-                        letP->y_offF = PF_Fixed((heightF*letP->scaleFactorF /2) - letP->y_tA);
+                        letP->layerRatioF = (((double)in_data->width) *  letP->PixRatioNumF) / ((double)in_data->height*letP->PixRatioDenF); //ratio input from layer;
+                        letP->y_offsetUpF = 0;
+                        letP->x_offsetF =0;
+                        letP->y_offsetUpF =0;
+                        letP->y_offsetDownF =0;
+                        
                     }
-                   
                     
+                    PF_Fixed 	widthF	= INT2FIX(ABS(in_result.max_result_rect.right - in_result.max_result_rect.left)),
+                                heightF = INT2FIX(ABS(in_result.max_result_rect.bottom - in_result.max_result_rect.top));
                     
+                    letP->x_offF = PF_Fixed((widthF*letP->scaleFactorF /2) - letP->x_tA);
+                    letP->y_offF = PF_Fixed((heightF*letP->scaleFactorF /2) - letP->y_tA);
+
                     
+                    /*
+                     if ( letP->forceSizeB ==TRUE)
+                     {
+                     letP->x_offF = PF_Fixed((widthF*(letP->scaleFactorF)/2) - (letP->x_tA) -(letP->compWidthA*0.5 -letP->positionTD.x));
+                     letP->y_offF = PF_Fixed((heightF*(letP->scaleFactorF )/2) - (letP->y_tA) +(letP->compHeightA*0.5-letP->positionTD.y));
+                     }*/
 					UnionLRect(&in_result.result_rect, 		&extraP->output->result_rect);
 					UnionLRect(&in_result.max_result_rect, 	&extraP->output->max_result_rect);	
 				}

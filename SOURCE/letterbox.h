@@ -20,6 +20,7 @@
 //#include "AE_EffectCB.h"
 //#include "AE_EffectCBSuites.h"
 
+
 #include "letterbox_Strings.h"
 #include "entry.h"
 #include "AE_EffectUI.h"
@@ -117,10 +118,11 @@ typedef struct {
     
     PF_Fixed            x_offF;
     PF_Fixed            y_offF;
-    PF_Fixed            xComp_offF;
-    PF_Fixed            yComp_offF;
-
     
+    PF_FpLong            x_offsetF;
+    PF_FpLong            y_offsetUpF;
+    PF_FpLong            y_offsetDownF;
+
     AEGP_ThreeDVal          positionTD;
     AEGP_ThreeDVal          scaleTD;
     AEGP_ThreeDVal          acPointTD;
