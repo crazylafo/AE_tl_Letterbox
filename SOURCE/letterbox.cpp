@@ -1,5 +1,6 @@
 #include "letterbox.h"
 
+static AEGP_PluginID	S_my_id				= 0;
 
 static PF_Err 
 About (	
@@ -152,7 +153,10 @@ SequenceSetup (
 																		NULL,
 																		NULL,
 																		&seqP->state));
+                    
+                    
 				}
+                
 
 				out_data->sequence_data = seq_dataH;
 				suites.HandleSuite1()->host_unlock_handle(seq_dataH);
@@ -691,7 +695,48 @@ GetRatioFromWorld (
     }
 }
 
+static PF_FpLong
+getLayerPosition(
+PF_InData            *in_data,
+LayerBasicProp      *layerBasicProp
+)
+{
 
+    PF_Err		err = PF_Err_NONE;
+    AEGP_SuiteHandler suites(in_data->pica_basicP);
+    AEGP_LayerH		layerH;
+    AEGP_CompH		compH;
+    A_Time          currT;
+    AEGP_StreamVal2  streamValPositionP, streamValScaleP, streamValAcP;;
+
+    AEGP_LTimeMode LTimeMode = AEGP_LTimeMode_CompTime;
+    A_FpLong fps;
+
+    
+    
+
+    ERR(suites.PFInterfaceSuite1()->AEGP_GetEffectLayer(in_data->effect_ref, &layerH)); //return layer parent of the effect.
+    ERR(suites.LayerSuite8()->AEGP_GetLayerParentComp (layerH, &compH)); //return parent comp
+    ERR(suites.LayerSuite5()->AEGP_GetLayerCurrentTime(layerH, LTimeMode, &currT));
+     ERR(suites.CompSuite6()->AEGP_GetCompFramerate(compH,&fps));
+    currT.scale = A_u_long(fps);
+    currT.value= MAX (0, (currT.value * A_u_long(fps) / currT.scale) - 1);
+    
+
+     //Get position param of the layer
+     ERR(suites.StreamSuite4()->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_POSITION,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValPositionP, NULL));
+    layerBasicProp->positionTD = streamValPositionP.three_d;
+    //Get scale param of the layer
+     ERR(suites.StreamSuite4()->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_SCALE,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValScaleP,  NULL));
+    layerBasicProp->scaleTD =streamValScaleP.three_d;
+    //Get anchor point param of the layer
+     ERR(suites.StreamSuite4()->AEGP_GetLayerStreamValue (layerH,AEGP_LayerStream_ANCHORPOINT,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValAcP,  NULL));
+    layerBasicProp->acPointTD =streamValAcP.three_d;
+    
+    return err;
+    
+    
+}
 
 
 static PF_FpLong
@@ -703,6 +748,7 @@ CalculateBox(
 {
 	PF_Err		err = PF_Err_NONE;
 
+
     PF_FpLong CondBlackHupF, CondBlackHdownF, CondBlackVleftF, CondBlackVrightF;
 	prerender_letP	*letP = reinterpret_cast<prerender_letP*>(refcon);
 
@@ -710,7 +756,8 @@ CalculateBox(
 	int layerRatioInt = int(letP->layerRatioF * 100);
     
 
-
+    
+    
 	//definitions for horizontal letterbox
     CondBlackHupF =   (letP->InputHeightF - (letP->InputWidthF/letP->userRatioF))/ 2;
     CondBlackHdownF = (letP->InputHeightF  - ((letP->InputHeightF  - (letP->InputWidthF  / letP->userRatioF)) / 2)) + letP->y_offsetDownF;
@@ -1733,17 +1780,14 @@ PreRender(
 	PF_CheckoutResult		in_result;
 	AEGP_SuiteHandler		suites(in_data->pica_basicP);
     PF_ParamDef             param_center, param_scale,  param_force_size, param_size_source;
-
 	PF_Handle	infoH		=	suites.HandleSuite1()->host_new_handle(sizeof(prerender_letP));
+
 
 	prerender_letP		*letP = NULL;
     
-    AEGP_LayerH		layerH;
-    AEGP_CompH		compH;
-    AEGP_ItemH		itemH;
-    A_Time          currT;
-    AEGP_StreamVal2  streamValPositionP, streamValScaleP, streamValAcP;;
-    AEGP_StreamType streamTypePositionP, streamTypeScaleP, streamTypeAcP;
+
+    CompositionProp         compProp;
+   LayerBasicProp          layerBasicProp;
 
 
 	if (infoH){
@@ -1770,10 +1814,6 @@ PreRender(
 												&in_result));
 				if (!err){
                    
-                    
-                   
-
-
                     
                     AEFX_CLR_STRUCT(param_center);
                     ERR(PF_CHECKOUT_PARAM(	in_data,
@@ -1833,6 +1873,18 @@ PreRender(
                     }
                     if (extraP->cb->GuidMixInPtr)  //Comunicate with AEGP to get the informations about layer/composition paramaters needed.
                     {
+                        AEGP_LayerH		layerH;
+                        AEGP_CompH		compH;
+                        AEGP_ItemH		itemH;
+                        A_Time          currT;
+                       // AEGP_StreamVal2  streamValPositionP, streamValScaleP, streamValAcP;;
+                        //AEGP_StreamType streamTypePositionP, streamTypeScaleP, streamTypeAcP;
+                        AEGP_LTimeMode LTimeMode = AEGP_LTimeMode_CompTime;
+                        A_FpLong fps;
+                        
+                        //AEGP_StreamRefH		streamH = NULL;
+                        //AEGP_StreamValue	val;
+                        //AEGP_StreamValue	*sample_valP = &val;
                         
                         
                         
@@ -1840,50 +1892,77 @@ PreRender(
                                                                                                                              kAEGPPFInterfaceSuite,
                                                                                                                              kAEGPPFInterfaceSuiteVersion1,
                                                                                                                              out_data);
+                        
+                        AEFX_SuiteScoper<AEGP_LayerSuite5> layerSuiteFive = AEFX_SuiteScoper<AEGP_LayerSuite5>(	in_data,
+                                                                                                           kAEGPLayerSuite,
+                                                                                                           kAEGPLayerSuiteVersion5,
+                                                                                                           out_data);
+                        
                         AEFX_SuiteScoper<AEGP_LayerSuite8> layerSuite = AEFX_SuiteScoper<AEGP_LayerSuite8>(	in_data,
                                                                                                            kAEGPLayerSuite,
                                                                                                            kAEGPLayerSuiteVersion8,
                                                                                                            out_data);
-                        AEFX_SuiteScoper<AEGP_CompSuite10> compSuite = AEFX_SuiteScoper<AEGP_CompSuite10>(  in_data,
+                        
+                        AEFX_SuiteScoper<AEGP_CompSuite6> compSuiteSix = AEFX_SuiteScoper<AEGP_CompSuite6>(  in_data,
                                                                                                           kAEGPCompSuite,
-                                                                                                          kAEGPCompSuiteVersion10,
+                                                                                                          kAEGPCompSuiteVersion6,
+                                                                                                          out_data);
+
+
+                        AEFX_SuiteScoper<AEGP_CompSuite11> compSuite = AEFX_SuiteScoper<AEGP_CompSuite11>(  in_data,
+                                                                                                          kAEGPCompSuite,
+                                                                                                          kAEGPCompSuiteVersion11,
                                                                                                           out_data);
                         AEFX_SuiteScoper<AEGP_StreamSuite4> streamSuite = AEFX_SuiteScoper<AEGP_StreamSuite4>(  in_data,
                                                                                                               kAEGPStreamSuite,
                                                                                                               kAEGPStreamSuiteVersion4,
                                                                                                               out_data);
                         
+                        AEFX_SuiteScoper<AEGP_ItemSuite9> ItemSuite = AEFX_SuiteScoper<AEGP_ItemSuite9>(  in_data,
+                                                                                                              kAEGPItemSuite,
+                                                                                                              kAEGPItemSuiteVersion9,
+                                                                                                              out_data);
+
                         
-                        currT.value= in_data->current_time;
-                        currT.scale =in_data->time_scale;
+                   
+
                         
                         PFInterfaceSuite->AEGP_GetEffectLayer(in_data->effect_ref, &layerH); //return layer parent of the effect.
+                        layerSuite->AEGP_GetLayerParentComp (layerH, &compH); //return parent comp
+                        layerSuiteFive->AEGP_GetLayerCurrentTime(layerH, LTimeMode, &currT);
+                        compSuiteSix->AEGP_GetCompFramerate(compH,&fps);
+                        currT.scale = A_u_long(fps);
+                        currT.value= MAX (0, (currT.value * A_u_long(fps) / currT.scale) - 1);
+                       
+                        
+                       /*
                         //Get position param of the layer
-                        streamSuite ->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_POSITION,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValPositionP, &streamTypePositionP);
-                        letP->positionTD =streamValPositionP.three_d;
+                        ERR(suites.StreamSuite2()->AEGP_GetNewLayerStream(S_my_id, layerH, AEGP_LayerStream_POSITION, &streamH));
+                        ERR(suites.StreamSuite2()->AEGP_GetNewStreamValue(S_my_id,
+                                                                          streamH,
+                                                                          LTimeMode,
+                                                                          &currT,
+                                                                          FALSE,
+                                                                          sample_valP));
+                        ERR(suites.StreamSuite2()->AEGP_DisposeStreamValue(sample_valP));
+                         layerBasicProp.positionTD = sample_valP->val.three_d;
                         //Get scale param of the layer
                         streamSuite ->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_SCALE,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValScaleP, &streamTypeScaleP);
-                        letP->scaleTD =streamValScaleP.three_d;
+                        layerBasicProp.scaleTD =streamValScaleP.three_d;
                         //Get anchor point param of the layer
                         streamSuite ->AEGP_GetLayerStreamValue (layerH,AEGP_LayerStream_ANCHORPOINT,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValAcP, &streamTypeAcP);
-                        letP->acPointTD =streamValAcP.three_d;
+                        layerBasicProp.acPointTD =streamValAcP.three_d;*/
+                       
+                        //extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(layerBasicProp), reinterpret_cast<void *>(&layerBasicProp));
+
+
                         
+                        compSuite->AEGP_GetItemFromComp(compH, &itemH); //return the item matricule of the comp
+                        ItemSuite->AEGP_GetItemDimensions (itemH, &compProp.compWidthA,&compProp.compHeightA); //return width/height property
+                        compSuite->AEGP_GetCompDownsampleFactor(compH, &compProp.dsfP);
+                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(compProp), reinterpret_cast<void *>(&compProp));
                         
-                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->positionTD), reinterpret_cast<void *>(&letP->positionTD));
-                        //extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->scaleTD), reinterpret_cast<void *>(&letP->scaleTD));
-                        //extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->acPointTD), reinterpret_cast<void *>(&letP->acPointTD));
-                        
-                        
-                        /*
-                         ERR(suites.LayerSuite8()->AEGP_GetLayerParentComp (layerH, &compH)); //return parent comp
-                         ERR(suites.CompSuite11()->AEGP_GetItemFromComp(compH, &itemH)); //return the item matricule of the comp
                          
-                         ERR(suites.ItemSuite9()->AEGP_GetItemDimensions (itemH, &letP->compWidthA,&letP->compHeightA)); //return width/height property
-                         extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->compWidthA), reinterpret_cast<void *>(&letP->compWidthA));
-                         extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->compHeightA), reinterpret_cast<void *>(&letP->compHeightA));
-                         ERR(suites.CompSuite11()->AEGP_GetCompDownsampleFactor(compH, &letP->dsfP));
-                         extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->dsfP), reinterpret_cast<void *>(&letP->dsfP));
-                         */
                     }
                     
                     
@@ -1899,24 +1978,27 @@ PreRender(
                     letP->InputHeightF  = PF_FpLong (in_data->height);
                     
                     //DOWNSCALE
-                    letP->compWidthA    *=  scale_x;
-                    letP->compHeightA   *=  scale_y;
                     letP->InputWidthF   *=  scale_x;
                     letP->InputHeightF  *=  scale_y;
                     
-                    letP->positionTD.x *= scale_x;
-                    letP->positionTD.y *= scale_y;
+                   // letP->positionTD.x = layerBasicProp.positionTD.x * scale_x;
+                    //letP->positionTD.y = layerBasicProp.positionTD.y *scale_y;
 
-                    letP->compRatioF = (((double)letP->compWidthA) *  letP->dsfP.xS) / ((double)letP->compHeightA*letP->dsfP.yS); //ratio from the current comp;
+                    
                     
                     if (letP->compModeB == true)
                     {
-                        //letP->InputWidthF  = PF_FpLong (letP->compWidthA);
-                        //letP->InputHeightF = PF_FpLong (letP->compHeightA);
-                        //letP->layerRatioF = letP->compRatioF;
+                        letP->compWidthF    = PF_FpLong (compProp.compWidthA* scale_x);
+                        letP->compHeightF   = PF_FpLong (compProp.compHeightA*  scale_y);
+                        letP->dsfP   =      compProp.dsfP;
+                        letP->compRatioF = (((double)letP->compWidthF) *  letP->dsfP.xS) / ((double)letP->compHeightF*letP->dsfP.yS); //ratio from the current comp;
+
+                        letP->InputWidthF  = letP->compWidthF;
+                        letP->InputHeightF = letP->compHeightF;
+                        letP->layerRatioF = letP->compRatioF;
                    
-                        
-                        letP->x_offsetF = letP->positionTD.x - letP->compWidthA*0.5;
+                        /*
+                        letP->x_offsetF = letP->positionTD.x - letP->compWidthF*0.5;
                         
                         letP->y_offsetDownF =letP->positionTD.y/10; //  letP->compHeightA*0.5 - letP->positionTD.y;
                         if (letP->positionTD.y > 0.5*letP->compHeightA)
@@ -1926,7 +2008,7 @@ PreRender(
                         else
                         {
                             letP->y_offsetUpF = 0;
-                        }
+                        }*/
                     }
                     else
                     {
@@ -2159,7 +2241,7 @@ RespondtoAEGP (
     suites.ANSICallbacksSuite1()->sprintf(	out_data->return_msg,
                                           "%s",
                                           reinterpret_cast<A_char*>(extraP));
-    
+
     return err;
 }
 
