@@ -39,6 +39,12 @@ typedef enum {
     StrID_ForceSName,            
     StrID_ForceSDescription,
     
+     StrID_AEGP_GET_POSITION,
+     StrID_AEGP_GET_ANCHORPOINT,
+     StrID_AEGP_GET_SCALE,
+     StrID_AEGP_GET_COMP_SIZE,
+     StrID_AEGP_GET_COMP_PIX_RATIO,
+    
     
 	StrID_Err_LoadSuite,
 	StrID_Err_FreeSuite,

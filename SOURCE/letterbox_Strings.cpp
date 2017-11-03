@@ -60,6 +60,13 @@ TableString		g_strs[StrID_NUMTYPES] = {
                                 "Composition",
     StrID_ForceSName,             "Force the scale",
     StrID_ForceSDescription,      "Force the layer to keep the full size",
+    
+     StrID_AEGP_GET_POSITION,           "Return Position of the layer", //invisible by final user
+     StrID_AEGP_GET_ANCHORPOINT,       "Return anchor point of the layer", //invisible by final user
+     StrID_AEGP_GET_SCALE,             "Return scale of the layer", //invisible by final user
+
+     StrID_AEGP_GET_COMP_SIZE,          "Return width height of the composition", //invisible by final user
+     StrID_AEGP_GET_COMP_PIX_RATIO,     "Return Pixel Aspect ratio of the comp", //invisible by final user
 
 
 	

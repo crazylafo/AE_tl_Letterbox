@@ -130,7 +130,7 @@ typedef struct {
     PF_FpLong           scaleFactorxF;
     PF_FpLong           scaleFactoryF;
     PF_Boolean          compModeB;
-    PF_Boolean          forceSizeB;
+   A_long               forceSizeB;
     
     PF_Fixed            x_offF;
     PF_Fixed            y_offF;
@@ -138,12 +138,16 @@ typedef struct {
     PF_FpLong            x_offsetF;
     PF_FpLong            y_offsetUpF;
     PF_FpLong            y_offsetDownF;
-
-    AEGP_ThreeDVal          positionTD;
-    AEGP_ThreeDVal          scaleTD;
-    AEGP_ThreeDVal          acPointTD;
-    PF_FpLong              compWidthF;
-    PF_FpLong                compHeightF;
+    
+    PF_Fixed              layerscale_x;
+    PF_Fixed              layerscale_y;
+    PF_Fixed              layerscale_dflt_x;
+    PF_Fixed              layerscale_dflt_y;
+    AEGP_TwoDVal          positionTD;
+    AEGP_TwoDVal          scaleTD;
+    AEGP_TwoDVal          acPointTD;
+    PF_FpLong             compWidthF;
+    PF_FpLong             compHeightF;
     AEGP_DownsampleFactor dsfP;
     PF_FpLong              compRatioF;
     
@@ -172,6 +176,12 @@ enum {
     LETB_SIZE_SOURCE,
     LETB_FORCE_SCALE,
     END_TOPIC_GR3,
+    
+    AEGP_GET_POSITION,
+    AEGP_GET_ANCHORPOINT,
+    AEGP_GET_SCALE,
+    AEGP_GET_COMP_SIZE,
+    AEGP_GET_COMP_PIX_RATIO,
 	LETB_NUM_PARAMS
 };
 
@@ -193,6 +203,11 @@ enum {
     LETB_SIZE_SOURCE_DISK_ID,
     LETB_FORCE_SCALE_DISK_ID,
     END_TOPIC_GR3_DISK_ID,
+    AEGP_GET_POSITION_DISK_ID,
+    AEGP_GET_ANCHORPOINT_DISK_ID,
+    AEGP_GET_SCALE_DISK_ID,
+    AEGP_GET_COMP_SIZE_DISK_ID,
+    AEGP_GET_COMP_PIX_RATIO_DISK_ID,
 };
 
 extern "C" {
