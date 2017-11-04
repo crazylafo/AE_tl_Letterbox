@@ -36,9 +36,16 @@
 
 #define	MAJOR_VERSION		1
 #define	MINOR_VERSION		3
-#define	BUG_VERSION			3
+#define	BUG_VERSION			4
 #define	STAGE_VERSION		PF_Stage_RELEASE
 #define	BUILD_VERSION		2
+
+typedef enum {
+    REF_LAYER= 1,
+    REF_COMPOSITION,
+    REF_SIZE = REF_COMPOSITION
+} current_source;
+
 
 typedef enum {
 	MODE_BASIC= 1,
@@ -89,8 +96,8 @@ typedef struct {
 typedef struct {
 	PF_FpLong           userRatioF;
 	PF_FpLong           layerRatioF;
-	PF_FpLong           InWidthF;
-	PF_FpLong           InHeightF;
+	PF_FpLong           InputWidthF;
+	PF_FpLong           InputHeightF;
 	PF_FpLong           PixRatioNumF;
 	PF_FpLong           PixRatioDenF;
 	A_long              x_tA;
@@ -102,45 +109,70 @@ typedef struct {
     PF_FpLong           SlidervalueF;
     PF_Pixel            Color;
     PF_Pixel32          Color32;
+    PF_FpLong           scaleFactorF;
+    PF_FpLong           scaleFactorxF;
+    PF_FpLong           scaleFactoryF;
+    PF_Boolean          compModeB;
+    PF_Boolean          forceScaleB;
+    
     PF_Fixed            x_offF;
     PF_Fixed            y_offF;
-    PF_FpLong           scaleFactor;
-    
-    
+    PF_Fixed            xComp_offF;
+    PF_Fixed            yComp_offF;
 
-
-} prerender_stuff, *pre_render_stuffP, **pre_render_stuffH;
+    
+    AEGP_ThreeDVal          positionTD;
+    AEGP_ThreeDVal          scaleTD;
+    AEGP_ThreeDVal          acPointTD;
+    A_long                  compWidthA;
+    A_long                 compHeightA;
+    AEGP_DownsampleFactor dsfP;
+    PF_FpLong              compRatioF;
+    
+} prerender_letP, *pre_render_letPP, **pre_render_letPH;
 
 
 enum {
-    LETB_INPUT = 0,
+    	LETB_INPUT = 0,
 	LETB_MODE,
 	LETB_PRESET,
 	LETB_SLIDER,
-	LETB_CHECKBOX,
-    LETB_TRSP,
-    LETB_COLOR,
-    LETB_GR1,
-    LETB_CENTER,
-    LETB_RESIZE,
-    END_TOPIC_GR1,
+    
+    	LETB_TRSP,
+    	LETB_COLOR,
+    	LETB_GR1,
+    	LETB_CENTER,
+    	LETB_RESIZE,
+    	END_TOPIC_GR1,
+    	LETB_GR2,
+    	LETB_LAYER_ANALYS,
+        LETB_CHECKBOX,
+    	END_TOPIC_GR2,
+    	LETB_GR3,
+    	LETB_SIZE_SOURCE,
+    	LETB_FORCE_SCALE,
+    	END_TOPIC_GR3,
 	LETB_NUM_PARAMS
 };
 
 enum {
 	LETB_MODE_DISK_ID = 1,
 	LETB_PRESET_DISK_ID,
-	LETB_GROUP_START_DISK_ID,
-	LETB_SLIDER_DISK_ID,
-	LETB_CHECKBOX_DISK_ID,
+	LETB_RATIO_DISK_ID,
     LETB_TRSP_DISK_ID,
     LETB_COLOR_DISK_ID,
     TOPIC_GR1_DISK_ID,
     LETB_CENTER_DISK_ID,
     LETB_RESIZE_DISK_ID,
     END_TOPIC_GR1_DISK_ID,
-    LETB_GROUP_END_DISK_ID,
-	
+    TOPIC_GR2_DISK_ID,
+    LETB_LAYER_ANALYS_DISK_ID,
+    LETB_DETECT_DISK_ID,
+    END_TOPIC_GR2_DISK_ID,
+    TOPIC_GR3_DISK_ID,
+    LETB_SIZE_SOURCE_DISK_ID,
+    LETB_FORCE_SCALE_DISK_ID,
+    END_TOPIC_GR3_DISK_ID,
 };
 
 extern "C" {
