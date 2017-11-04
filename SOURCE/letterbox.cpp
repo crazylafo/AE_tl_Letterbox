@@ -1,6 +1,7 @@
 #include "letterbox.h"
 
 
+
 static PF_Err 
 About (	
 	PF_InData		*in_data,
@@ -61,10 +62,14 @@ GlobalSetup (
 	//	the parameter group's) collapsed flag.
 	
 	out_data->out_flags2	=	PF_OutFlag2_PARAM_GROUP_START_COLLAPSED_FLAG	|
+                                PF_OutFlag2_SUPPORTS_SMART_RENDER				|
 								PF_OutFlag2_FLOAT_COLOR_AWARE					|
-								PF_OutFlag2_SUPPORTS_SMART_RENDER				|
 								PF_OutFlag2_DOESNT_NEED_EMPTY_PIXELS			|
-								PF_OutFlag2_I_MIX_GUID_DEPENDENCIES;
+                                PF_OutFlag2_I_USE_COLORSPACE_ENUMERATION;       // FOR PREMIERE
+								//PF_OutFlag2_I_MIX_GUID_DEPENDENCIES;
+    
+    
+    
 
     // For Premiere - declare supported pixel formats
     if (in_data->appl_id == 'PrMr') {
@@ -152,7 +157,10 @@ SequenceSetup (
 																		NULL,
 																		NULL,
 																		&seqP->state));
+                    
+                    
 				}
+                
 
 				out_data->sequence_data = seq_dataH;
 				suites.HandleSuite1()->host_unlock_handle(seq_dataH);
@@ -173,6 +181,7 @@ ParamsSetup(
 {
 	PF_Err				err					= PF_Err_NONE;
 	PF_ParamDef			def;
+
     
   
 	
@@ -236,8 +245,7 @@ ParamsSetup(
     
     AEFX_CLR_STRUCT(def);
     
-    def.flags		|=	PF_ParamFlag_SUPERVISE |
-    PF_ParamFlag_CANNOT_TIME_VARY;
+    def.flags		|=	PF_ParamFlag_SUPERVISE;
     
     PF_ADD_COLOR(	STR(StrID_ColorName),
                  0,
@@ -359,9 +367,74 @@ ParamsSetup(
     AEFX_CLR_STRUCT(def);
     
     
+    //AEGP GROUP
+    
+    def.flags		|=	PF_ParamFlag_SUPERVISE;
+    
+    
+    PF_ADD_POINT(	STR(StrID_AEGP_GET_POSITION),
+                 50,
+                 50,
+                 0,
+                 AEGP_GET_POSITION_DISK_ID);
 
     
+    AEFX_CLR_STRUCT(def);
+    
+    
+    def.flags		|=	PF_ParamFlag_SUPERVISE;
+    
+    
+    PF_ADD_POINT(	STR(StrID_AEGP_GET_ANCHORPOINT),
+                 50,
+                 50,
+                 0,
+                 AEGP_GET_ANCHORPOINT_DISK_ID);
+    
+    AEFX_CLR_STRUCT(def);
+    
+    def.flags		|=	PF_ParamFlag_SUPERVISE;
+    
+    
+    PF_ADD_POINT(STR(StrID_AEGP_GET_SCALE),
+                 100,
+                 100,
+                 0,
+                 AEGP_GET_SCALE_DISK_ID);
+    
+    AEFX_CLR_STRUCT(def);
+    
+    def.flags		|=	PF_ParamFlag_SUPERVISE;
+    
+    
+    PF_ADD_POINT(STR(StrID_AEGP_GET_COMP_SIZE),
+                 50,
+                 50,
+                 0,
+                 AEGP_GET_COMP_SIZE_DISK_ID);
+    
+    AEFX_CLR_STRUCT(def);
+    
+    PF_ADD_FLOAT_SLIDERX(STR(StrID_AEGP_GET_COMP_PIX_RATIO),
+                    0,
+                    20,
+                    0,
+                    20,
+                    PF_Precision_HUNDREDTHS,
+                    0,
+                    0,
+                    PF_ParamFlag_SUPERVISE,
+                    AEGP_GET_COMP_PIX_RATIO_DISK_ID);
+    AEFX_CLR_STRUCT(def);
+
+
+    
+    
     out_data->num_params = LETB_NUM_PARAMS;
+    
+
+    
+    
 
 	return err;
 }
@@ -692,60 +765,9 @@ GetRatioFromWorld (
     }
 }
 
-static A_Err
-GetCompProperties(
-                  PF_InData                        *in_data,
-                  A_long                           *compWidthA,
-                  A_long                           *compHeightA,
-                  AEGP_DownsampleFactor            *compDownSampleFactor)
-{
-    A_Err 			err = A_Err_NONE;
-    AEGP_SuiteHandler		suites(in_data->pica_basicP);
-    
-    
-    AEGP_CompH		compH;
-    AEGP_LayerH		layerH;
-    AEGP_ItemH		itemH;
-    
-    ERR (suites.PFInterfaceSuite1()->AEGP_GetEffectLayer(in_data->effect_ref, &layerH)); //return layer parent of the effect.
-    ERR(suites.LayerSuite8()->AEGP_GetLayerParentComp (layerH, &compH)); //return parent com
-    ERR(suites.CompSuite11()->AEGP_GetItemFromComp(compH, &itemH)); //return the item matricule of the comp
-    ERR(suites.ItemSuite9()->AEGP_GetItemDimensions (itemH, compWidthA,compHeightA)); //return width/height property
-    ERR(suites.CompSuite11()->AEGP_GetCompDownsampleFactor(compH, compDownSampleFactor));
 
-    return err;
-}
 
-static A_Err
-GetLayerProperties(
-                   PF_InData          *in_data,
-                   AEGP_ThreeDVal        *PosTD,
-                   AEGP_ThreeDVal        *ScaleTD,
-                   AEGP_ThreeDVal        *AcPointTD)
-{
-    A_Err 			err = A_Err_NONE;
-    AEGP_SuiteHandler		suites(in_data->pica_basicP);
-    
-    AEGP_LayerH		layerH;
-    A_Time          currT;
-    AEGP_StreamVal2  streamValPositionP, streamValScaleP, streamValAcP;;
-    AEGP_StreamType streamTypePositionP, streamTypeScaleP, streamTypeAcP;
-    
-    
-    currT.value= in_data->current_time;
-    currT.scale =in_data->time_scale;
-    
-    ERR (suites.PFInterfaceSuite1()->AEGP_GetEffectLayer(in_data->effect_ref, &layerH)); //return layer parent of the effect.
-    ERR (suites.StreamSuite4()->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_POSITION,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValPositionP, &streamTypePositionP));
-    *PosTD =streamValPositionP.three_d;
-    ERR (suites.StreamSuite4()->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_SCALE,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValScaleP, &streamTypeScaleP));
-    *ScaleTD =streamValScaleP.three_d;
-    ERR (suites.StreamSuite4()->AEGP_GetLayerStreamValue(layerH,AEGP_LayerStream_ANCHORPOINT,AEGP_LTimeMode_CompTime,&currT,FALSE, &streamValAcP, &streamTypeAcP));
-    *AcPointTD =streamValAcP.three_d;
 
-    
-    return err;
-}
 
 static PF_FpLong
 CalculateBox(
@@ -756,21 +778,23 @@ CalculateBox(
 {
 	PF_Err		err = PF_Err_NONE;
 
-	PF_FpLong CondBlackHup, CondBlackHdown, CondBlackVleft, CondBlackVright;
+
+    PF_FpLong CondBlackHupF, CondBlackHdownF, CondBlackVleftF, CondBlackVrightF;
 	prerender_letP	*letP = reinterpret_cast<prerender_letP*>(refcon);
-
-
 
 	int userRatioInt = int(letP->userRatioF * 100);
 	int layerRatioInt = int(letP->layerRatioF * 100);
+    
 
+    
+    
 	//definitions for horizontal letterbox
-	CondBlackHup = (letP->InputHeightF  - (letP->InputWidthF  / letP->userRatioF)) / 2;
-	CondBlackHdown = letP->InputHeightF  - ((letP->InputHeightF  - (letP->InputWidthF  / letP->userRatioF)) / 2);
+    CondBlackHupF =   (letP->InputHeightF - (letP->InputWidthF/letP->userRatioF))/ 2;
+    CondBlackHdownF = (letP->InputHeightF  - ((letP->InputHeightF  - (letP->InputWidthF  / letP->userRatioF)) / 2)) + letP->y_offsetDownF;
 
 	//definitions for verticals letterbox
-	CondBlackVleft = ((letP->InputWidthF  - (letP->InputHeightF *letP->userRatioF)) / 2);
-	CondBlackVright = letP->InputWidthF  - ((letP->InputWidthF  - (letP->InputHeightF *letP->userRatioF)) / 2);
+    CondBlackVleftF = ((letP->InputWidthF  - (letP->InputHeightF  *  letP->userRatioF)) / 2); //-letP->x_offsetF;
+    CondBlackVrightF = letP->InputWidthF   - ((letP->InputWidthF  - (letP->InputHeightF *letP->userRatioF)) / 2)+letP->x_offsetF;
 
 
 	if (letP)
@@ -781,7 +805,7 @@ CalculateBox(
 		}
 		else if (letP->userRatioF > letP->layerRatioF) //if ratio from UI up to footage's ratio--> then mask the height
 		{
-			if (yL < (CondBlackHup) || yL >(CondBlackHdown))
+			if  (yL < (CondBlackHupF) || yL >(CondBlackHdownF))
 			{
 				return 0.0;
 			}
@@ -793,7 +817,7 @@ CalculateBox(
 		else if (letP->userRatioF < letP->layerRatioF) //if ratio from UI under to ratio footage--> then mask the width
 		{
 
-			if (xL <  CondBlackVleft || xL > CondBlackVright)
+			if (xL <  CondBlackVleftF || xL > CondBlackVrightF)
 			{
 				return 0.0;
 			}
@@ -840,8 +864,9 @@ PixelFunc8 (
         }
         else
         {
-            new_xFi = PF_Fixed( (((A_long)xL << 16) + letP->x_offF)/letP->scaleFactorF);
-            new_yFi = PF_Fixed( (((A_long)yL << 16) + letP->y_offF)/letP->scaleFactorF);
+
+            new_xFi = PF_Fixed( (((A_long)xL << 16) + letP->x_offF)/ letP->scaleFactorxF);
+            new_yFi = PF_Fixed( (((A_long)yL << 16) + letP->y_offF)/ letP->scaleFactoryF);
             
             ERR(letP->in_data.utils->subpixel_sample (in_data->effect_ref,
                                                             new_xFi,
@@ -1149,9 +1174,14 @@ MakeParamCopy(
     copy[LETB_CENTER]           = *actual[LETB_CENTER];
     copy[LETB_RESIZE]           = *actual[LETB_RESIZE];
     copy[LETB_GR2]              = *actual[LETB_GR2];
-     copy[LETB_SIZE_SOURCE]       = *actual[LETB_SIZE_SOURCE];
+    copy[LETB_SIZE_SOURCE]       = *actual[LETB_SIZE_SOURCE];
     copy[LETB_FORCE_SCALE]      = *actual[LETB_FORCE_SCALE];
-   
+    
+    copy[AEGP_GET_POSITION]      = *actual[AEGP_GET_POSITION];
+    copy[AEGP_GET_SCALE]         = *actual[AEGP_GET_SCALE];
+    copy[AEGP_GET_ANCHORPOINT]   = *actual[AEGP_GET_ANCHORPOINT];
+    copy[AEGP_GET_COMP_SIZE]     = *actual[AEGP_GET_COMP_SIZE];
+    copy[AEGP_GET_COMP_PIX_RATIO]= *actual[AEGP_GET_COMP_PIX_RATIO];
     return PF_Err_NONE;
     
 }
@@ -1265,6 +1295,61 @@ UserChangedParam(
         }
     }
     
+    
+    
+    
+    if (which_hitP->param_index)
+    {
+        AEGP_SuiteHandler		suites(in_data->pica_basicP);
+        
+        AEGP_StreamRefH  aegp_get_position_streamH       = NULL,
+        aegp_get_anchorpoint_streamH    = NULL,
+        aegp_get_scale_streamH          = NULL,
+        aegp_get_compSize_streamH       = NULL,
+        aegp_get_compPixRatio_streamH   = NULL;
+        AEGP_EffectRefH			meH				= NULL;
+        my_global_dataP		globP				= reinterpret_cast<my_global_dataP>(DH(out_data->global_data));
+        
+        // AEGP COMUNICATION
+        ERR(suites.PFInterfaceSuite1()->AEGP_GetNewEffectForEffect(globP->my_id, in_data->effect_ref, &meH));
+        
+        ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, AEGP_GET_POSITION, &aegp_get_position_streamH));
+        ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, AEGP_GET_ANCHORPOINT,& aegp_get_anchorpoint_streamH));
+        ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, AEGP_GET_SCALE, &aegp_get_scale_streamH ));
+        ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, AEGP_GET_COMP_SIZE,&aegp_get_compSize_streamH));
+        ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, AEGP_GET_COMP_PIX_RATIO,&aegp_get_compPixRatio_streamH));
+        
+        //AND NOW WE ADD EXPRESSIONS
+        
+        ERR(suites.StreamSuite4()->AEGP_SetExpression(globP->my_id,aegp_get_position_streamH, ("transform.position")));
+        ERR(suites.StreamSuite4()->AEGP_SetExpression(globP->my_id,aegp_get_anchorpoint_streamH, ("transform.anchorPoint")));
+        ERR(suites.StreamSuite4()->AEGP_SetExpression(globP->my_id,aegp_get_scale_streamH, ("transform.scale")));
+        
+        //ERR(suites.StreamSuite4()->AEGP_SetExpression(globP->my_id,aegp_get_compSize_streamH, ("transform.scale")));
+        //ERR(suites.StreamSuite4()->AEGP_SetExpression(globP->my_id,aegp_get_compSize_streamH, ("transform.scale")));
+        
+        
+        //dispose stream
+        if (meH){
+            ERR2(suites.EffectSuite2()->AEGP_DisposeEffect(meH));
+        }
+        
+        if (aegp_get_position_streamH){
+            ERR2(suites.StreamSuite2()->AEGP_DisposeStream(aegp_get_position_streamH));
+        }
+        if (aegp_get_anchorpoint_streamH){
+            ERR2(suites.StreamSuite2()->AEGP_DisposeStream(aegp_get_anchorpoint_streamH));
+        }
+        if (aegp_get_scale_streamH){
+            ERR2(suites.StreamSuite2()->AEGP_DisposeStream(aegp_get_scale_streamH));
+        }
+        
+    }
+
+
+    
+    
+    
     return err;
 }
 
@@ -1288,7 +1373,12 @@ UpdateParameterUI(
     resize_streamH      = NULL,
     topic2_streamH      = NULL,
     sizeSource_streamH  = NULL,
-    forceScale_streamH  = NULL;
+    forceScale_streamH  = NULL,
+    aegp_get_position_streamH       = NULL,
+    aegp_get_anchorpoint_streamH    = NULL,
+    aegp_get_scale_streamH          = NULL,
+    aegp_get_compSize_streamH       = NULL,
+    aegp_get_compPixRatio_streamH   = NULL;
     
     PF_ParamType		param_type;
     PF_ParamDefUnion	param_union;
@@ -1304,7 +1394,7 @@ UpdateParameterUI(
     PF_ParamDef		param_copy[LETB_NUM_PARAMS];
     ERR(MakeParamCopy(params, param_copy));
     
-    
+
     
     if (in_data->appl_id != 'PrMr') {
         
@@ -1350,11 +1440,21 @@ UpdateParameterUI(
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_GR2, &topic2_streamH ));
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_SIZE_SOURCE, &sizeSource_streamH));
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, LETB_FORCE_SCALE,&forceScale_streamH));
+        
+        
+        // AEGP COMUNICATION
+        
+        ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, AEGP_GET_POSITION, &aegp_get_position_streamH));
+        ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, AEGP_GET_ANCHORPOINT,& aegp_get_anchorpoint_streamH));
+        ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, AEGP_GET_SCALE, &aegp_get_scale_streamH ));
+        ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, AEGP_GET_COMP_SIZE,&aegp_get_compSize_streamH));
+        ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, AEGP_GET_COMP_PIX_RATIO,&aegp_get_compPixRatio_streamH));
+        
+        
 
         
-        
         // Toggle visibility of parameters
-        //HDE ONE
+        //HIDE ONE
         ERR(suites.DynamicStreamSuite2()->AEGP_SetDynamicStreamFlag(preset_streamH, 	AEGP_DynStreamFlag_HIDDEN, FALSE, hide_oneB));
         //HIDE TWO
         ERR(suites.DynamicStreamSuite2()->AEGP_SetDynamicStreamFlag(slider_streamH, 	AEGP_DynStreamFlag_HIDDEN, FALSE, hide_twoB));
@@ -1362,6 +1462,9 @@ UpdateParameterUI(
         ERR(suites.DynamicStreamSuite2()->AEGP_SetDynamicStreamFlag(topic_streamH, 	AEGP_DynStreamFlag_HIDDEN, FALSE, hide_threeB));
         ERR(suites.DynamicStreamSuite2()->AEGP_SetDynamicStreamFlag(center_streamH, AEGP_DynStreamFlag_HIDDEN, FALSE, hide_threeB));
         ERR(suites.DynamicStreamSuite2()->AEGP_SetDynamicStreamFlag(resize_streamH, AEGP_DynStreamFlag_HIDDEN, FALSE, hide_threeB));
+        
+        // ALWAYS HIDE AEGP_COMUNICATIONS. TADA MAGIC
+
         
         // Change popup menu items
         ERR(suites.EffectSuite3()->AEGP_GetEffectParamUnionByIndex(globP->my_id, meH, LETB_PRESET_DISK_ID, &param_type, &param_union));
@@ -1403,6 +1506,18 @@ UpdateParameterUI(
         if (forceScale_streamH){
             ERR2(suites.StreamSuite2()->AEGP_DisposeStream(forceScale_streamH));
         }
+        
+        if (aegp_get_position_streamH){
+            ERR2(suites.StreamSuite2()->AEGP_DisposeStream(aegp_get_position_streamH));
+        }
+        if (aegp_get_anchorpoint_streamH){
+            ERR2(suites.StreamSuite2()->AEGP_DisposeStream(aegp_get_anchorpoint_streamH));
+        }
+        if (aegp_get_scale_streamH){
+            ERR2(suites.StreamSuite2()->AEGP_DisposeStream(aegp_get_scale_streamH));
+        }
+
+        
 
         
         if (!err){
@@ -1785,78 +1900,26 @@ PreRender(
 
 	PF_CheckoutResult		in_result;
 	AEGP_SuiteHandler		suites(in_data->pica_basicP);
-    PF_ParamDef  displace_param, scale_param, safeMode_param;
-
+    PF_ParamDef             param_center, param_scale,  param_force_size, param_size_source, param_aegp_position, param_aegp_scale, param_aegp_anchorpoint;
 	PF_Handle	infoH		=	suites.HandleSuite1()->host_new_handle(sizeof(prerender_letP));
 
+
 	prerender_letP		*letP = NULL;
+    
+
+    CompositionProp        compProp;
+
 
 
 	if (infoH){
 		letP = reinterpret_cast<prerender_letP*>(suites.HandleSuite1()->host_lock_handle(infoH));
 		if (letP){
+            AEFX_CLR_STRUCT(*letP);
+           
+            
 			extraP->output->pre_render_data = infoH;
             
-            
-            //Comunicate with AEGP to get the informations about layer/composition paramaters needed.
-            if (extraP->cb->GuidMixInPtr) {
-                GetLayerProperties(in_data,& letP->positionTD, &letP->scaleTD, &letP->acPointTD);
-                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->positionTD), reinterpret_cast<void *>(&letP->positionTD));
-                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->scaleTD), reinterpret_cast<void *>(&letP->scaleTD));
-                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->acPointTD), reinterpret_cast<void *>(&letP->acPointTD));
-            }
-            if (extraP->cb->GuidMixInPtr) {
-                GetCompProperties(in_data, &letP->compWidthA, &letP->compHeightA, &letP->dsfP);
-                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->compWidthA), reinterpret_cast<void *>(&letP->compWidthA));
-                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->compHeightA), reinterpret_cast<void *>(&letP->compHeightA));
-                extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(letP->dsfP), reinterpret_cast<void *>(&letP->dsfP));
-            }
-            
-            
-
-            
-            AEFX_CLR_STRUCT(displace_param);
-            ERR(PF_CHECKOUT_PARAM(	in_data,
-                                  LETB_CENTER,
-                                  in_data->current_time,
-                                  in_data->time_step,
-                                  in_data->time_scale,
-                                  &displace_param));
-            ERR2(PF_CHECKIN_PARAM(in_data, &displace_param));
-            
-            AEFX_CLR_STRUCT(scale_param);
-            ERR(PF_CHECKOUT_PARAM(in_data,
-                                  LETB_RESIZE,
-                                  in_data->current_time,
-                                  in_data->time_step,
-                                  in_data->time_scale,
-                                  &scale_param));
-            
-            PF_FpLong  scaleFactorF;
-            scaleFactorF  = scale_param.u.fs_d.value/100;
-            ERR2(PF_CHECKIN_PARAM(in_data, &scale_param));
-            
-            AEFX_CLR_STRUCT(safeMode_param);
-            ERR(PF_CHECKOUT_PARAM(in_data,
-                                  LETB_FORCE_SCALE,
-                                  in_data->current_time,
-                                  in_data->time_step,
-                                  in_data->time_scale,
-                                  &safeMode_param));
-            PF_Boolean safeMode;
-            if (safeMode_param.u.bd.value ==1)
-            {
-                safeMode =TRUE;
-            }
-            else
-            {
-              safeMode =FALSE;
-            }
-            ERR2(PF_CHECKIN_PARAM(in_data, &safeMode_param));
-            
-
-			AEFX_CLR_STRUCT(in_result);
-
+             AEFX_CLR_STRUCT(in_result);
 			if (!err){
 				req.preserve_rgb_of_zero_alpha = TRUE;
                 req.field = PF_Field_FRAME;
@@ -1871,50 +1934,220 @@ PreRender(
 												in_data->time_scale,
 												&in_result));
 				if (!err){
-                    AEFX_CLR_STRUCT(*letP);
+                   
+                    
+                    AEFX_CLR_STRUCT(param_center);
+                    ERR(PF_CHECKOUT_PARAM(	in_data,
+                                          LETB_CENTER,
+                                          in_data->current_time,
+                                          in_data->time_step,
+                                          in_data->time_scale,
+                                          &param_center));
+                    
+                    letP->x_tA =   param_center.u.td.x_value;
+                     letP->y_tA =  param_center.u.td.y_value;
+                    ERR2(PF_CHECKIN_PARAM(in_data, &param_center));
+                    
+                    AEFX_CLR_STRUCT(param_scale);
+                    ERR(PF_CHECKOUT_PARAM(in_data,
+                                          LETB_RESIZE,
+                                          in_data->current_time,
+                                          in_data->time_step,
+                                          in_data->time_scale,
+                                          &param_scale));
+                    
+                    letP->scaleFactorF = param_scale.u.fs_d.value/100;
+                    ERR2(PF_CHECKIN_PARAM(in_data, &param_scale));
+                    
+                    AEFX_CLR_STRUCT(param_size_source);
+                    ERR(PF_CHECKOUT_PARAM(in_data,
+                                          LETB_SIZE_SOURCE,
+                                          in_data->current_time,
+                                          in_data->time_step,
+                                          in_data->time_scale,
+                                          &param_size_source));
+                    
+                    A_long tempCompMode;
+                    GetModeValue(param_size_source.u.pd.value, &tempCompMode);
+                    ERR2(PF_CHECKIN_PARAM(in_data, &param_size_source));
                     
                     
+                    AEFX_CLR_STRUCT(param_force_size);
+                    ERR(PF_CHECKOUT_PARAM(in_data,
+                                          LETB_FORCE_SCALE,
+                                          in_data->current_time,
+                                          in_data->time_step,
+                                          in_data->time_scale,
+                                          & param_force_size));
+                    if (param_force_size.u.bd.value == 1)
+                    {
+                        letP->forceSizeB = 1;
+                        
+                    }
+                    else
+                    {
+                         letP->forceSizeB = 0;
+                    }
+
+                    ERR2(PF_CHECKIN_PARAM(in_data, & param_force_size));
+                    
+                    // CHECKOUT PARAM FROM AEGP
+                    
+                    AEFX_CLR_STRUCT(param_aegp_position);
+                    ERR(PF_CHECKOUT_PARAM(in_data,
+                                          AEGP_GET_POSITION,
+                                          in_data->current_time,
+                                          in_data->time_step,
+                                          in_data->time_scale,
+                                          &param_aegp_position));
+                    
+                    letP->positionTD.x = param_aegp_position.u.td.x_value;
+                    letP->positionTD.y = param_aegp_position.u.td.y_value;
+                    ERR2(PF_CHECKIN_PARAM(in_data, &param_aegp_position));
+                    
+                    AEFX_CLR_STRUCT(param_aegp_scale);
+                    ERR(PF_CHECKOUT_PARAM(in_data,
+                                          AEGP_GET_SCALE,
+                                          in_data->current_time,
+                                          in_data->time_step,
+                                          in_data->time_scale,
+                                          &param_aegp_scale));
+                    letP->layerscale_dflt_x = param_aegp_scale.u.td.x_dephault;
+                    letP->layerscale_dflt_y = param_aegp_scale.u.td.y_dephault;
+
+                    letP->layerscale_x = param_aegp_scale.u.td.x_value;
+                    letP->layerscale_y = param_aegp_scale.u.td.y_value;
+                    ERR2(PF_CHECKIN_PARAM(in_data, &param_aegp_scale));
+                    
+                    AEFX_CLR_STRUCT(param_aegp_anchorpoint);
+                    ERR(PF_CHECKOUT_PARAM(in_data,
+                                          AEGP_GET_ANCHORPOINT,
+                                          in_data->current_time,
+                                          in_data->time_step,
+                                          in_data->time_scale,
+                                          &param_aegp_anchorpoint));
+                    
+                    letP->acPointTD.x = param_aegp_anchorpoint.u.td.x_value;
+                    letP->acPointTD.y = param_aegp_anchorpoint.u.td.y_value;
+                    ERR2(PF_CHECKIN_PARAM(in_data, &param_aegp_anchorpoint));
+                    
+                    
+
+                    
+                    
+                    if (tempCompMode ==1)
+                    {
+                        letP->compModeB = true;
+                    }
+                    else
+                    {
+                        letP->compModeB = false;
+                    }
+
+					/*
+                    AEGP_LayerH		layerH;
+                    AEGP_CompH		compH;
+                    AEGP_ItemH		itemH;
+					
+                    if (extraP->cb->GuidMixInPtr)  //Comunicate with AEGP to force rerender if comp  properties have changed.
+                    {
+
+                        
+                        
+                        
+                        AEFX_SuiteScoper<AEGP_PFInterfaceSuite1> PFInterfaceSuite = AEFX_SuiteScoper<AEGP_PFInterfaceSuite1>(	in_data,
+                                                                                                                             kAEGPPFInterfaceSuite,
+                                                                                                                             kAEGPPFInterfaceSuiteVersion1,
+                                                                                                                             out_data);
+
+
+
+                        AEFX_SuiteScoper<AEGP_CompSuite11> compSuite = AEFX_SuiteScoper<AEGP_CompSuite11>(  in_data,
+                                                                                                          kAEGPCompSuite,
+                                                                                                          kAEGPCompSuiteVersion11,
+                                                                                                          out_data);
+                        
+                        AEFX_SuiteScoper<AEGP_LayerSuite8> layerSuite = AEFX_SuiteScoper<AEGP_LayerSuite8>(  in_data,
+                                                                                                          kAEGPLayerSuite,
+                                                                                                          kAEGPLayerSuiteVersion8,
+                                                                                                          out_data);
+
+                       
+                        PFInterfaceSuite->AEGP_GetEffectLayer(in_data->effect_ref, &layerH);
+                        layerSuite->AEGP_GetLayerParentComp (layerH, &compH); //return parent comp
+                        compSuite->AEGP_GetItemFromComp(compH, &itemH); //return the item matricule of the comp
+                        extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(compProp), reinterpret_cast<void *>(&compProp));
+                        
+                         
+                    }*/
                     letP->PixRatioNumF = in_data->pixel_aspect_ratio.num;
                     letP->PixRatioDenF = in_data->pixel_aspect_ratio.den;
                     PF_FpLong scale_x = in_data->downsample_x.num / (float)in_data->downsample_x.den,
                               scale_y = in_data->downsample_y.num / (float)in_data->downsample_y.den;
                     
                     
-                    letP->InputWidthF  = in_data->width;
-                    letP->InputHeightF  = in_data->height;
+                    letP->InputWidthF  = PF_FpLong (in_data->width);
+                    letP->InputHeightF  = PF_FpLong (in_data->height);
+                    
                     
                     //DOWNSCALE
-                    letP->compWidthA*= letP->dsfP.xS;
-                    letP->compHeightA*= letP->dsfP.yS;
-                    letP->InputWidthF  *= scale_x;
-                    letP->InputHeightF  *= scale_y;
+                    letP->InputWidthF   *=  scale_x;
+                    letP->InputHeightF  *=  scale_y;
+                    letP->positionTD.x  *=   scale_x;
+                    letP->positionTD.y  *=   scale_y;
+                    letP->acPointTD.x   *=   scale_x;
+                    letP->acPointTD.y   *=   scale_y;
                     
-                    letP->positionTD.x *= scale_x;
-                    letP->positionTD.y *= scale_y;
-                    
-                    
-                    letP->layerRatioF = (((double)in_data->width) *  letP->PixRatioNumF) / ((double)in_data->height*letP->PixRatioDenF); //ratio input from layer;
-                    letP->compRatioF = (((double)letP->compWidthA) *  letP->dsfP.xS) / ((double)letP->compHeightA*letP->dsfP.yS); //ratio from the current comp;
+                   
 
-                    
-                    PF_Fixed 	widthF	= INT2FIX(ABS(in_result.max_result_rect.right - in_result.max_result_rect.left)),
-                                heightF = INT2FIX(ABS(in_result.max_result_rect.bottom - in_result.max_result_rect.top));
-
-                    if (safeMode ==TRUE)
+                    if (letP->compModeB == TRUE)
                     {
-                        letP->x_offF = PF_Fixed((widthF*(scaleFactorF)/2) - (displace_param.u.td.x_value + letP->compWidthA*0.5 -letP->positionTD.x));
-                        letP->y_offF = PF_Fixed((heightF*(scaleFactorF)/2) - (displace_param.u.td.y_value  + letP->compHeightA*0.5-letP->positionTD.y));
+                       // letP->compWidthF    = PF_FpLong (compProp.compWidthA* scale_x);
+                       // letP->compHeightF   = PF_FpLong (compProp.compHeightA*  scale_y);
+                        //letP->dsfP   =      compProp.dsfP;
+                        letP->compRatioF = (((double)letP->compWidthF) *  letP->dsfP.xS) / ((double)letP->compHeightF*letP->dsfP.yS); //ratio from the current comp;
+
+                        letP->InputWidthF  = letP->compWidthF;
+                        letP->InputHeightF = letP->compHeightF;
+                        letP->layerRatioF = letP->compRatioF;
+                   
+                        /*
+                        letP->x_offsetF = letP->positionTD.x - letP->compWidthF*0.5;
                         
+                        letP->y_offsetDownF =letP->positionTD.y/10; //  letP->compHeightA*0.5 - letP->positionTD.y;
+                        if (letP->positionTD.y > 0.5*letP->compHeightA)
+                        {
+                            letP->y_offsetUpF = 0 ;  //- ABS (letP->y_offsetDownF);
+                        }
+                        else
+                        {
+                            letP->y_offsetUpF = 0;
+                        }*/
                     }
                     else
                     {
-                        letP->x_offF = PF_Fixed((widthF*scaleFactorF/2) - displace_param.u.td.x_value);
-                        letP->y_offF = PF_Fixed((heightF*scaleFactorF/2) - displace_param.u.td.y_value);
+                        letP->layerRatioF = (((double)in_data->width) *  letP->PixRatioNumF) / ((double)in_data->height*letP->PixRatioDenF); //ratio input from layer;
+                        letP->y_offsetUpF = 0;
+                        letP->x_offsetF =0;
+                        letP->y_offsetUpF =0;
+                        letP->y_offsetDownF =0;
+                        
                     }
-                   
                     
+                    PF_Fixed 	widthF	= INT2FIX(ABS(in_result.max_result_rect.right - in_result.max_result_rect.left)),
+                                heightF = INT2FIX(ABS(in_result.max_result_rect.bottom - in_result.max_result_rect.top));
                     
+                    PF_Fixed layerscale_x, layerscale_y;
                     
+                    layerscale_x = PF_Fixed( letP->layerscale_dflt_x - letP->layerscale_x )/100;
+                    layerscale_y = PF_Fixed (letP->layerscale_dflt_y - letP->layerscale_y )/100;
+                    
+                    letP->scaleFactorxF = letP->scaleFactorF +(letP->forceSizeB*(layerscale_x));
+                    letP->scaleFactoryF = letP->scaleFactorF + (letP->forceSizeB*(layerscale_y));
+                 
+                    letP->x_offF = PF_Fixed((widthF * letP->scaleFactorxF/2) - letP->x_tA);
+                    letP->y_offF = PF_Fixed((heightF* letP->scaleFactoryF/2) - letP->y_tA);
+
 					UnionLRect(&in_result.result_rect, 		&extraP->output->result_rect);
 					UnionLRect(&in_result.max_result_rect, 	&extraP->output->max_result_rect);	
 				}
@@ -1947,14 +2180,9 @@ SmartRender(
     AEGP_SuiteHandler suites(in_data->pica_basicP);
     
 
-    PF_ParamDef params[LETB_NUM_PARAMS];
-    PF_ParamDef *paramsP[LETB_NUM_PARAMS];
-    AEFX_CLR_STRUCT(params);
-    
-    for (int i = 0; i < LETB_NUM_PARAMS; i++)
-    {
-        paramsP[i] = &params[i];
-    }
+    PF_ParamDef param_preset, param_slider, param_mode, param_trsp, param_color, param_layer_source, param_cb_detect;
+   
+
 
 	
 	ERR(AEFX_AcquireSuite(	in_data, 
@@ -1983,116 +2211,72 @@ SmartRender(
             originPt.h = (A_short)(in_data->output_origin_x);
             originPt.v = (A_short)(in_data->output_origin_y);
             
-            
+            AEFX_CLR_STRUCT(param_preset);
             ERR(PF_CHECKOUT_PARAM(in_data,
                                   LETB_PRESET,
                                   in_data->current_time,
                                   in_data->time_step,
                                   in_data->time_scale,
-                                  &params[LETB_PRESET]));
+                                  &param_preset));
             
-             GetPresetRatioValue(params[LETB_PRESET].u.pd.value, &letP->PreseTvalueF);
+             GetPresetRatioValue(param_preset.u.pd.value, &letP->PreseTvalueF);
            
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_PRESET]));
+            ERR2(PF_CHECKIN_PARAM(in_data, &param_preset));
             
             
-            
+            AEFX_CLR_STRUCT(param_slider);
             ERR(PF_CHECKOUT_PARAM(	in_data,
                                   LETB_SLIDER,
                                   in_data->current_time,
                                   in_data->time_step,
                                   in_data->time_scale,
-                                  &params[LETB_SLIDER]));
+                                  &param_slider));
             
-            letP->SlidervalueF =params[LETB_SLIDER].u.fs_d.value;
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_SLIDER]));
+            letP->SlidervalueF =param_slider.u.fs_d.value;
+            ERR2(PF_CHECKIN_PARAM(in_data, &param_slider));
             
             
-            
+            AEFX_CLR_STRUCT(param_mode);
             ERR(PF_CHECKOUT_PARAM(in_data,
                                   LETB_MODE,
                                   in_data->current_time,
                                   in_data->time_step,
                                   in_data->time_scale,
-                                  &params[LETB_MODE]));
+                                  &param_mode));
             
             
             A_long tempMode;
             
-            GetModeValue(params[LETB_MODE].u.pd.value, &tempMode);
+            GetModeValue(param_mode.u.pd.value, &tempMode);
             letP->userRatioF = (letP->PreseTvalueF * ABS(tempMode-1) )+ (letP->SlidervalueF * tempMode);
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_MODE]));
+            ERR2(PF_CHECKIN_PARAM(in_data, &param_mode));
             
+            AEFX_CLR_STRUCT(param_trsp);
             ERR(PF_CHECKOUT_PARAM(in_data,
                                   LETB_TRSP,
                                   in_data->current_time,
                                   in_data->time_step,
                                   in_data->time_scale,
-                                  &params[LETB_TRSP]));
-            letP->PoTransparentB = params[LETB_TRSP].u.bd.value;
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_TRSP]));
+                                  &param_trsp));
+            letP->PoTransparentB = param_trsp.u.bd.value;
+            ERR2(PF_CHECKIN_PARAM(in_data, &param_trsp));
             
             
-
+            AEFX_CLR_STRUCT(param_color);
             ERR(PF_CHECKOUT_PARAM(	in_data,
                                   LETB_COLOR,
                                   in_data->current_time,
                                   in_data->time_step,
                                   in_data->time_scale,
-                                  &params[LETB_COLOR]));
+                                  &param_color));
             
 
-            letP->Color = params[LETB_COLOR].u.cd.value;
-            ERR(suites.ColorParamSuite1()->PF_GetFloatingPointColorFromColorDef(in_data->effect_ref, &params[LETB_COLOR], &letP->Color32));
+            letP->Color = param_color.u.cd.value;
+            ERR(suites.ColorParamSuite1()->PF_GetFloatingPointColorFromColorDef(in_data->effect_ref, &param_color, &letP->Color32));
 
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_COLOR]));
-            
-            ERR(PF_CHECKOUT_PARAM(in_data,
-                                  LETB_RESIZE,
-                                  in_data->current_time,
-                                  in_data->time_step,
-                                  in_data->time_scale,
-                                  &params[LETB_RESIZE]));
-            
-            
-            letP->scaleFactorF = params[LETB_RESIZE].u.fs_d.value/100;
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_RESIZE]));
-            
-            
-            ERR(PF_CHECKOUT_PARAM(in_data,
-                                  LETB_SIZE_SOURCE,
-                                  in_data->current_time,
-                                  in_data->time_step,
-                                  in_data->time_scale,
-                                  &params[LETB_SIZE_SOURCE]));
-            
-            
-            A_long tempCompMode;
-            GetModeValue(params[LETB_SIZE_SOURCE].u.pd.value, &tempCompMode);
-            if (tempCompMode ==1)
-            {
-                letP->compModeB = true;
-            }
-            else
-            {
-                letP->compModeB = false;
-            }
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_MODE]));
-            
-            
-            
-            ERR(PF_CHECKOUT_PARAM(in_data,
-                                  LETB_TRSP,
-                                  in_data->current_time,
-                                  in_data->time_step,
-                                  in_data->time_scale,
-                                  &params[LETB_TRSP]));
-            
-            letP->forceScaleB= params[LETB_TRSP].u.bd.value;
-            ERR2(PF_CHECKIN_PARAM(in_data, &params[LETB_TRSP]));
+            ERR2(PF_CHECKIN_PARAM(in_data, &param_color));
 
 
-            
 			switch (format) {
 				
 				case PF_PixelFormat_ARGB128:
@@ -2172,7 +2356,7 @@ RespondtoAEGP (
     suites.ANSICallbacksSuite1()->sprintf(	out_data->return_msg,
                                           "%s",
                                           reinterpret_cast<A_char*>(extraP));
-    
+
     return err;
 }
 
@@ -2265,9 +2449,7 @@ EntryPointFunc(
                                        reinterpret_cast<const PF_UserChangedParamExtra *>(extra));
                                        
 				break;
-				
-			// Handling this selector will ensure that the UI will be properly initialized,
-			// even before the user starts changing parameters to trigger PF_Cmd_USER_CHANGED_PARAM
+
 			case PF_Cmd_UPDATE_PARAMS_UI:
 				err = UpdateParameterUI(	in_data,
 											out_data,

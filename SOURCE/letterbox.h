@@ -20,6 +20,7 @@
 //#include "AE_EffectCB.h"
 //#include "AE_EffectCBSuites.h"
 
+
 #include "letterbox_Strings.h"
 #include "entry.h"
 #include "AE_EffectUI.h"
@@ -65,14 +66,7 @@ typedef enum {
 	LETB_PRESET_SIZE = LETB_PRESET_TFZ
 } current_preset;
 
-typedef struct {
-	PF_Boolean		initializedB;
-	AEGP_PluginID	my_id;
-} my_global_data, *my_global_dataP, **my_global_dataH;
 
-typedef struct {
-	PF_State		state;
-} my_sequence_data, *my_sequence_dataP, **my_sequence_dataH;
 
 typedef struct {
     A_u_char	blue, green, red, alpha;
@@ -91,6 +85,27 @@ typedef struct {
 } PF_Pixel_VUYA_32f;*/
 
 
+typedef struct {
+    A_long                  compWidthA;
+    A_long                 compHeightA;
+    AEGP_DownsampleFactor dsfP;
+} CompositionProp;
+
+typedef struct {
+    AEGP_ThreeDVal          positionTD;
+    AEGP_ThreeDVal          scaleTD;
+    AEGP_ThreeDVal          acPointTD;
+} LayerBasicProp;
+
+
+typedef struct {
+    PF_Boolean		initializedB;
+    AEGP_PluginID	my_id;
+} my_global_data, *my_global_dataP, **my_global_dataH;
+
+typedef struct {
+    PF_State		state;
+} my_sequence_data, *my_sequence_dataP, **my_sequence_dataH;
 
 
 typedef struct {
@@ -100,11 +115,13 @@ typedef struct {
 	PF_FpLong           InputHeightF;
 	PF_FpLong           PixRatioNumF;
 	PF_FpLong           PixRatioDenF;
-	A_long              x_tA;
-	A_long              y_tA;
+	PF_Fixed            x_tA;
+	PF_Fixed            y_tA;
 	PF_Boolean          PoTransparentB;
+    
     PF_InData           in_data;
     PF_SampPB           samp_pb;
+
     PF_FpLong           PreseTvalueF;
     PF_FpLong           SlidervalueF;
     PF_Pixel            Color;
@@ -113,19 +130,24 @@ typedef struct {
     PF_FpLong           scaleFactorxF;
     PF_FpLong           scaleFactoryF;
     PF_Boolean          compModeB;
-    PF_Boolean          forceScaleB;
+   A_long               forceSizeB;
     
     PF_Fixed            x_offF;
     PF_Fixed            y_offF;
-    PF_Fixed            xComp_offF;
-    PF_Fixed            yComp_offF;
-
     
-    AEGP_ThreeDVal          positionTD;
-    AEGP_ThreeDVal          scaleTD;
-    AEGP_ThreeDVal          acPointTD;
-    A_long                  compWidthA;
-    A_long                 compHeightA;
+    PF_FpLong            x_offsetF;
+    PF_FpLong            y_offsetUpF;
+    PF_FpLong            y_offsetDownF;
+    
+    PF_Fixed              layerscale_x;
+    PF_Fixed              layerscale_y;
+    PF_Fixed              layerscale_dflt_x;
+    PF_Fixed              layerscale_dflt_y;
+    AEGP_TwoDVal          positionTD;
+    AEGP_TwoDVal          scaleTD;
+    AEGP_TwoDVal          acPointTD;
+    PF_FpLong             compWidthF;
+    PF_FpLong             compHeightF;
     AEGP_DownsampleFactor dsfP;
     PF_FpLong              compRatioF;
     
@@ -137,21 +159,29 @@ enum {
 	LETB_MODE,
 	LETB_PRESET,
 	LETB_SLIDER,
+    LETB_TRSP,
+    LETB_COLOR,
     
-    	LETB_TRSP,
-    	LETB_COLOR,
-    	LETB_GR1,
-    	LETB_CENTER,
-    	LETB_RESIZE,
-    	END_TOPIC_GR1,
-    	LETB_GR2,
-    	LETB_LAYER_ANALYS,
-        LETB_CHECKBOX,
-    	END_TOPIC_GR2,
-    	LETB_GR3,
-    	LETB_SIZE_SOURCE,
-    	LETB_FORCE_SCALE,
-    	END_TOPIC_GR3,
+    LETB_GR1,
+    LETB_CENTER,
+    LETB_RESIZE,
+    END_TOPIC_GR1,
+    
+    LETB_GR2,
+    LETB_LAYER_ANALYS,
+    LETB_CHECKBOX,
+    END_TOPIC_GR2,
+    
+    LETB_GR3,
+    LETB_SIZE_SOURCE,
+    LETB_FORCE_SCALE,
+    END_TOPIC_GR3,
+    
+    AEGP_GET_POSITION,
+    AEGP_GET_ANCHORPOINT,
+    AEGP_GET_SCALE,
+    AEGP_GET_COMP_SIZE,
+    AEGP_GET_COMP_PIX_RATIO,
 	LETB_NUM_PARAMS
 };
 
@@ -173,6 +203,11 @@ enum {
     LETB_SIZE_SOURCE_DISK_ID,
     LETB_FORCE_SCALE_DISK_ID,
     END_TOPIC_GR3_DISK_ID,
+    AEGP_GET_POSITION_DISK_ID,
+    AEGP_GET_ANCHORPOINT_DISK_ID,
+    AEGP_GET_SCALE_DISK_ID,
+    AEGP_GET_COMP_SIZE_DISK_ID,
+    AEGP_GET_COMP_PIX_RATIO_DISK_ID
 };
 
 extern "C" {
