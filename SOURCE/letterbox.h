@@ -20,6 +20,7 @@
 //#include "AE_EffectCB.h"
 //#include "AE_EffectCBSuites.h"
 
+
 #include "letterbox_Strings.h"
 #include "entry.h"
 #include "AE_EffectUI.h"
@@ -36,9 +37,16 @@
 
 #define	MAJOR_VERSION		1
 #define	MINOR_VERSION		3
-#define	BUG_VERSION			3
+#define	BUG_VERSION			4
 #define	STAGE_VERSION		PF_Stage_RELEASE
 #define	BUILD_VERSION		2
+
+typedef enum {
+    REF_LAYER= 1,
+    REF_COMPOSITION,
+    REF_SIZE = REF_COMPOSITION
+} current_source;
+
 
 typedef enum {
 	MODE_BASIC= 1,
@@ -58,14 +66,7 @@ typedef enum {
 	LETB_PRESET_SIZE = LETB_PRESET_TFZ
 } current_preset;
 
-typedef struct {
-	PF_Boolean		initializedB;
-	AEGP_PluginID	my_id;
-} my_global_data, *my_global_dataP, **my_global_dataH;
 
-typedef struct {
-	PF_State		state;
-} my_sequence_data, *my_sequence_dataP, **my_sequence_dataH;
 
 typedef struct {
     A_u_char	blue, green, red, alpha;
@@ -84,63 +85,130 @@ typedef struct {
 } PF_Pixel_VUYA_32f;*/
 
 
+typedef struct {
+    A_long                  compWidthA;
+    A_long                 compHeightA;
+    AEGP_DownsampleFactor dsfP;
+} CompositionProp;
+
+typedef struct {
+    AEGP_ThreeDVal          positionTD;
+    AEGP_ThreeDVal          scaleTD;
+    AEGP_ThreeDVal          acPointTD;
+} LayerBasicProp;
+
+
+typedef struct {
+    PF_Boolean		initializedB;
+    AEGP_PluginID	my_id;
+} my_global_data, *my_global_dataP, **my_global_dataH;
+
+typedef struct {
+    PF_State		state;
+} my_sequence_data, *my_sequence_dataP, **my_sequence_dataH;
 
 
 typedef struct {
 	PF_FpLong           userRatioF;
 	PF_FpLong           layerRatioF;
-	PF_FpLong           InWidthF;
-	PF_FpLong           InHeightF;
+	PF_FpLong           InputWidthF;
+	PF_FpLong           InputHeightF;
 	PF_FpLong           PixRatioNumF;
 	PF_FpLong           PixRatioDenF;
-	A_long              x_tA;
-	A_long              y_tA;
+	PF_Fixed            x_tA;
+	PF_Fixed            y_tA;
 	PF_Boolean          PoTransparentB;
+    
     PF_InData           in_data;
     PF_SampPB           samp_pb;
+
     PF_FpLong           PreseTvalueF;
     PF_FpLong           SlidervalueF;
     PF_Pixel            Color;
     PF_Pixel32          Color32;
+    PF_FpLong           scaleFactorF;
+    PF_FpLong          scaleFactorxF;
+    PF_FpLong           scaleFactoryF;
+    PF_Boolean          compModeB;
+   A_long               forceSizeB;
+    
     PF_Fixed            x_offF;
     PF_Fixed            y_offF;
-    PF_FpLong           scaleFactor;
     
+    PF_FpLong            x_offsetF;
+    PF_FpLong            y_offsetUpF;
+    PF_FpLong            y_offsetDownF;
     
-
-
-} prerender_stuff, *pre_render_stuffP, **pre_render_stuffH;
+      PF_FpLong             layerscale_x;
+      PF_FpLong             layerscale_y;
+   PF_FpLong              layerscale_dflt_x;
+    PF_FpLong              layerscale_dflt_y;
+    AEGP_TwoDVal          positionTD;
+    AEGP_TwoDVal          scaleTD;
+    AEGP_TwoDVal          acPointTD;
+    PF_FpLong             compWidthF;
+    PF_FpLong             compHeightF;
+     PF_FpLong              compPixRatioF;
+    PF_FpLong              compRatioF;
+    
+} prerender_letP, *pre_render_letPP, **pre_render_letPH;
 
 
 enum {
-    LETB_INPUT = 0,
+    	LETB_INPUT = 0,
 	LETB_MODE,
 	LETB_PRESET,
 	LETB_SLIDER,
-	LETB_CHECKBOX,
     LETB_TRSP,
     LETB_COLOR,
+    
     LETB_GR1,
     LETB_CENTER,
     LETB_RESIZE,
     END_TOPIC_GR1,
+    
+    LETB_GR2,
+    LETB_LAYER_ANALYS,
+    LETB_CHECKBOX,
+    END_TOPIC_GR2,
+    
+    LETB_GR3,
+    LETB_SIZE_SOURCE,
+    LETB_FORCE_SCALE,
+    END_TOPIC_GR3,
+    
+    AEGP_GET_POSITION,
+    AEGP_GET_ANCHORPOINT,
+    AEGP_GET_SCALE,
+    
+    AEGP_GET_COMP_PIX_RATIO,
+    AEGP_GET_COMPSIZE,
 	LETB_NUM_PARAMS
 };
 
 enum {
 	LETB_MODE_DISK_ID = 1,
 	LETB_PRESET_DISK_ID,
-	LETB_GROUP_START_DISK_ID,
-	LETB_SLIDER_DISK_ID,
-	LETB_CHECKBOX_DISK_ID,
+	LETB_RATIO_DISK_ID,
     LETB_TRSP_DISK_ID,
     LETB_COLOR_DISK_ID,
     TOPIC_GR1_DISK_ID,
     LETB_CENTER_DISK_ID,
     LETB_RESIZE_DISK_ID,
     END_TOPIC_GR1_DISK_ID,
-    LETB_GROUP_END_DISK_ID,
-	
+    TOPIC_GR2_DISK_ID,
+    LETB_LAYER_ANALYS_DISK_ID,
+    LETB_DETECT_DISK_ID,
+    END_TOPIC_GR2_DISK_ID,
+    TOPIC_GR3_DISK_ID,
+    LETB_SIZE_SOURCE_DISK_ID,
+    LETB_FORCE_SCALE_DISK_ID,
+    END_TOPIC_GR3_DISK_ID,
+    AEGP_GET_POSITION_DISK_ID,
+    AEGP_GET_ANCHORPOINT_DISK_ID,
+    AEGP_GET_SCALE_DISK_ID,
+    AEGP_GET_COMP_PIX_RATIO_DISK_ID,
+    AEGP_GET_COMPSIZE_DISK_ID,
 };
 
 extern "C" {

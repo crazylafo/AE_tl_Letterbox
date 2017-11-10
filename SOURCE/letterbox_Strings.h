@@ -16,21 +16,36 @@ typedef enum {
 
 	StrID_SliderName,  
 
-	StrID_CheckboxName,
-	StrID_CheckboxCaption,
+	
     
     StrID_TrspName,
     StrID_TrspDescription,
     
     StrID_ColorName,
     
+   
     StrID_sample_Param_Name,
-    
     StrID_PointName,
-    
     StrID_SliderResizeName,
     
+    StrID_detect_Param_Name,
+    StrID_Layer_detectName,
+    StrID_CheckboxName,
+    StrID_CheckboxCaption,
     
+    StrID_settings_Param_Name,
+    StrID_SizeSourceName,
+    StrID_SizeSourceChoices,
+    StrID_ForceSName,            
+    StrID_ForceSDescription,
+    
+     StrID_AEGP_GET_POSITION,
+     StrID_AEGP_GET_ANCHORPOINT,
+     StrID_AEGP_GET_SCALE,
+    
+     StrID_AEGP_GET_COMP_PIX_RATIO,
+     StrID_AEGP_GETCOMP_SIZE,
+
 	StrID_Err_LoadSuite,
 	StrID_Err_FreeSuite,
     
