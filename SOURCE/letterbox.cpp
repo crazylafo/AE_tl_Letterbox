@@ -57,9 +57,7 @@ GlobalSetup (
 								PF_OutFlag_USE_OUTPUT_EXTENT		|
                                 PF_OutFlag_DEEP_COLOR_AWARE;
 
-	// 	This new outflag, added in 5.5, makes After Effects
-	//	honor the initial state of the parameter's (in our case,
-	//	the parameter group's) collapsed flag.
+
 	
 	out_data->out_flags2	=	PF_OutFlag2_PARAM_GROUP_START_COLLAPSED_FLAG	|
                                 PF_OutFlag2_SUPPORTS_SMART_RENDER				|
@@ -384,6 +382,7 @@ ParamsSetup(
     
     def.flags		|=	PF_ParamFlag_SUPERVISE;
     
+
     
     PF_ADD_POINT(	STR(StrID_AEGP_GET_ANCHORPOINT),
                  50,
@@ -404,14 +403,14 @@ ParamsSetup(
     
     AEFX_CLR_STRUCT(def);
 
-    
+
     PF_ADD_FLOAT_SLIDERX(STR(StrID_AEGP_GET_COMP_PIX_RATIO),
                     0,
                     20,
                     0,
                     20,
+                    1,
                     PF_Precision_HUNDREDTHS,
-                    0,
                     0,
                     PF_ParamFlag_SUPERVISE,
                     AEGP_GET_COMP_PIX_RATIO_DISK_ID);
@@ -787,16 +786,25 @@ CalculateBox(
 	int userRatioInt = int(letP->userRatioF * 100);
 	int layerRatioInt = int(letP->layerRatioF * 100);
     
+    
+    
+    //Modification of offsets here.
+    if (letP->compModeB == true)
+    {
+        letP->x_offsetF = PF_FpLong (double(letP->InputWidthF -letP->compWidthF)*letP->userRatioF/letP->layerRatioF*2); //letP->compWidthF*0.5 - letP->positionYF;
+        letP->y_offsetF = PF_FpLong (double(letP->InputHeightF  - letP->compHeightF)/double(2*letP->userRatioF));  //letP->compHeightF*0.5 - letP->positionYF;
+    }
+    
 
     
     
 	//definitions for horizontal letterbox
-    CondBlackHupF =   ((letP->InputHeightF - (letP->InputWidthF/letP->userRatioF))/ 2) *letP->scaleFactoryF;
-    CondBlackHdownF =   letP->InputHeightF - CondBlackHupF;     //letP->y_offsetDownF;
+    CondBlackHupF = ((letP->InputHeightF*letP->scaleFactoryF  - (letP->InputWidthF/(letP->userRatioF)))/ 2/letP->scaleFactoryF) + float (letP->y_offsetF);
+    CondBlackHdownF =   letP->InputHeightF - CondBlackHupF;
 
 	//definitions for verticals letterbox
-    CondBlackVleftF = ((letP->InputWidthF  - (letP->InputHeightF  *  letP->userRatioF)) / 2)*letP->scaleFactorxF; //-letP->x_offsetF;
-    CondBlackVrightF = letP->InputWidthF   -  CondBlackVleftF;  //+letP->x_offsetF;
+    CondBlackVleftF = ((letP->InputWidthF*letP->scaleFactorxF  - (letP->InputHeightF *  letP->userRatioF))/2/letP->scaleFactorxF)+ float (letP->x_offsetF);
+    CondBlackVrightF = letP->InputWidthF   -  CondBlackVleftF;
 
 
 	if (letP)
@@ -1323,15 +1331,12 @@ UserChangedParam(
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, AEGP_GET_COMP_PIX_RATIO,&aegp_get_compPixRatio_streamH));
         
         //AND NOW WE ADD EXPRESSIONS
-        
+        /*
         ERR(suites.StreamSuite4()->AEGP_SetExpression(globP->my_id,aegp_get_position_streamH, ("transform.position")));
         ERR(suites.StreamSuite4()->AEGP_SetExpression(globP->my_id,aegp_get_anchorpoint_streamH, ("transform.anchorPoint")));
         ERR(suites.StreamSuite4()->AEGP_SetExpression(globP->my_id,aegp_get_scale_streamH, ("transform.scale")));
-        
         ERR(suites.StreamSuite4()->AEGP_SetExpression(globP->my_id,aegp_get_compPixRatio_streamH, ("thisComp.pixelAspect")));
-        ERR(suites.StreamSuite4()->AEGP_SetExpression(globP->my_id,aegp_get_compSize_streamH, ("[thisComp.width, thisComp.height]")));
-       
-
+        ERR(suites.StreamSuite4()->AEGP_SetExpression(globP->my_id,aegp_get_compSize_streamH, ("[thisComp.width, thisComp.height]")));*/
         
         
         //dispose stream
@@ -1354,6 +1359,25 @@ UserChangedParam(
         if (aegp_get_compPixRatio_streamH){
             ERR2(suites.StreamSuite2()->AEGP_DisposeStream(aegp_get_compPixRatio_streamH));
         }
+        
+        ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
+                                                        AEGP_GET_POSITION,
+                                                        params[AEGP_GET_POSITION]));
+        
+        ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
+                                                        AEGP_GET_SCALE,
+                                                        params[AEGP_GET_SCALE]));
+        
+        ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
+                                                        AEGP_GET_ANCHORPOINT,
+                                                        params[AEGP_GET_ANCHORPOINT]));
+        ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
+                                                        AEGP_GET_COMP_PIX_RATIO,
+                                                        params[AEGP_GET_COMP_PIX_RATIO]));
+        
+        ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
+                                                        AEGP_GET_COMPSIZE,
+                                                        params[AEGP_GET_COMPSIZE]));
         
     }
 
@@ -1460,10 +1484,7 @@ UpdateParameterUI(
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, AEGP_GET_SCALE, &aegp_get_scale_streamH ));
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, AEGP_GET_COMPSIZE,&aegp_get_compSize_streamH));
         ERR(suites.StreamSuite2()->AEGP_GetNewEffectStreamByIndex(globP->my_id, meH, AEGP_GET_COMP_PIX_RATIO,&aegp_get_compPixRatio_streamH));
-        
-        
 
-        
         // Toggle visibility of parameters
         //HIDE ONE
         ERR(suites.DynamicStreamSuite2()->AEGP_SetDynamicStreamFlag(preset_streamH, 	AEGP_DynStreamFlag_HIDDEN, FALSE, hide_oneB));
@@ -1990,7 +2011,7 @@ PreRender(
                                           in_data->current_time,
                                           in_data->time_step,
                                           in_data->time_scale,
-                                          & param_force_size));
+                                          &param_force_size));
                     if (param_force_size.u.bd.value == true)
                     {
                         letP->forceSizeB = 1;
@@ -2013,8 +2034,8 @@ PreRender(
                                           in_data->time_scale,
                                           &param_aegp_position));
                     
-                    letP->positionTD.x = param_aegp_position.u.td.x_value;
-                    letP->positionTD.y = param_aegp_position.u.td.y_value;
+                    letP->positionXF = param_aegp_position.u.td.x_value;
+                    letP->positionYF = param_aegp_position.u.td.y_value;
                     ERR2(PF_CHECKIN_PARAM(in_data, &param_aegp_position));
                     
                     AEFX_CLR_STRUCT(param_aegp_scale);
@@ -2043,18 +2064,6 @@ PreRender(
                     letP->acPointTD.y = param_aegp_anchorpoint.u.td.y_value;
                     ERR2(PF_CHECKIN_PARAM(in_data, &param_aegp_anchorpoint));
                     
-                    AEFX_CLR_STRUCT(param_aegp_compSize);
-                    ERR(PF_CHECKOUT_PARAM(in_data,
-                                          AEGP_GET_COMPSIZE,
-                                          in_data->current_time,
-                                          in_data->time_step,
-                                          in_data->time_scale,
-                                          &param_aegp_compSize));
-                    
-                    letP->compWidthF    = param_aegp_compSize.u.td.x_value;
-                    letP->compHeightF   = param_aegp_compSize.u.td.y_value;
-                    ERR2(PF_CHECKIN_PARAM(in_data, &param_aegp_compSize));
-
                     AEFX_CLR_STRUCT(param_aegp_compPixRatio);
                     ERR(PF_CHECKOUT_PARAM(in_data,
                                           AEGP_GET_COMP_PIX_RATIO,
@@ -2064,13 +2073,24 @@ PreRender(
                                           &param_aegp_compPixRatio));
                     
                     letP->compPixRatioF = param_aegp_compPixRatio.u.fs_d.value;
-
+                    
                     ERR2(PF_CHECKIN_PARAM(in_data, &param_aegp_compPixRatio));
+                    
+                    
+                    
+                    
+                    AEFX_CLR_STRUCT(param_aegp_compSize);
+                    ERR(PF_CHECKOUT_PARAM(in_data,
+                                          AEGP_GET_COMPSIZE,
+                                          in_data->current_time,
+                                          in_data->time_step,
+                                          in_data->time_scale,
+                                          &param_aegp_compSize));
+                    
+                    letP->compWidthF    = PF_FpLong(FIX2INT_ROUND(param_aegp_compSize.u.td.x_value));
+                    letP->compHeightF   = PF_FpLong(FIX2INT_ROUND( param_aegp_compSize.u.td.y_value));
+                    ERR2(PF_CHECKIN_PARAM(in_data, &param_aegp_compSize));
 
-                    
-                    
-
-                    
                     
                     if (tempCompMode ==1)
                     {
@@ -2092,63 +2112,47 @@ PreRender(
                     
                     
                     //DOWNSCALE
-                    letP->InputWidthF   *=  scale_x;
-                    letP->InputHeightF  *=  scale_y;
-                    letP->positionTD.x  *=   scale_x;
-                    letP->positionTD.y  *=   scale_y;
+                    letP->InputWidthF   *=   scale_x;
+                    letP->InputHeightF  *=   scale_y;
+                    letP->positionXF    *=   scale_x;
+                    letP->positionYF    *=   scale_y;
                     letP->acPointTD.x   *=   scale_x;
                     letP->acPointTD.y   *=   scale_y;
-                    letP->compWidthF     *=   scale_x;
+                    letP->compWidthF    *=   scale_x;
                     letP->compHeightF   *=   scale_y;
+                    
                     
                    
 
                     if (letP->compModeB == true)
                     {
                         letP->compRatioF = (((double)letP->compWidthF)) / ((double)letP->compHeightF*letP->compPixRatioF); //ratio from the current comp;
-
-                        letP->InputWidthF  = letP->compWidthF;
-                        letP->InputHeightF = letP->compHeightF;
                         letP->layerRatioF = letP->compRatioF;
-                   
-                        /*
-                        letP->x_offsetF = letP->positionTD.x - letP->compWidthF*0.5;
-                        
-                        letP->y_offsetDownF =letP->positionTD.y/10; //  letP->compHeightA*0.5 - letP->positionTD.y;
-                        if (letP->positionTD.y > 0.5*letP->compHeightF)
-                        {
-                            letP->y_offsetUpF = 0 ;  //- ABS (letP->y_offsetDownF);
-                        }
-                        else
-                        {
-                            letP->y_offsetUpF = 0;
-                        }*/
                     }
                     else
                     {
                         letP->layerRatioF = (((double)in_data->width) *  letP->PixRatioNumF) / ((double)in_data->height*letP->PixRatioDenF); //ratio input from layer;
-                        letP->y_offsetUpF = 0;
-                        letP->x_offsetF =0;
-                        letP->y_offsetUpF =0;
-                        letP->y_offsetDownF =0;
-                        
+                      
                     }
-                    
-                    PF_Fixed 	widthF	= INT2FIX(ABS(in_result.max_result_rect.right - in_result.max_result_rect.left)),
-                                heightF = INT2FIX(ABS(in_result.max_result_rect.bottom - in_result.max_result_rect.top));
                     
                     if (letP->forceSizeB ==1)
                     {
-                        letP->scaleFactorxF = float  (letP->layerscale_x/letP->layerscale_dflt_x);
-                        letP->scaleFactoryF = float (letP->layerscale_y/letP->layerscale_dflt_y);
+                        letP->scaleFactorxF =  PF_FpLong   (letP->layerscale_x*letP->PixRatioNumF/(letP->layerscale_dflt_x*(float)letP->PixRatioDenF));
+                        letP->scaleFactoryF =  PF_FpLong   (letP->layerscale_y/letP->layerscale_dflt_y);
+
                         
                     }
                     else
                     {
-                        letP->scaleFactorxF = 1;
-                        letP->scaleFactoryF = 1;
-                        
+                        letP->scaleFactorxF = letP->PixRatioNumF/(float)letP->PixRatioDenF; //1.000;
+                        letP->scaleFactoryF = 1.000;
                     }
+
+                    
+                    PF_Fixed 	widthF	= INT2FIX(ABS(in_result.max_result_rect.right - in_result.max_result_rect.left)),
+                                heightF = INT2FIX(ABS(in_result.max_result_rect.bottom - in_result.max_result_rect.top));
+                    
+                   
                     
                  
                     letP->x_offF = PF_Fixed((widthF * letP->scaleFactorF/2) - letP->x_tA);
@@ -2252,7 +2256,6 @@ SmartRender(
             
             
             A_long tempMode;
-            
             GetModeValue(param_mode.u.pd.value, &tempMode);
             letP->userRatioF = (letP->PreseTvalueF * ABS(tempMode-1) )+ (letP->SlidervalueF * tempMode);
             ERR2(PF_CHECKIN_PARAM(in_data, &param_mode));
@@ -2367,7 +2370,7 @@ RespondtoAEGP (
 }
 
 
-DllExport	PF_Err 
+DllExport	PF_Err
 EntryPointFunc(	
 	PF_Cmd			cmd,
 	PF_InData		*in_data,

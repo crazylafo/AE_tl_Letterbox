@@ -59,7 +59,7 @@ resource 'PiPL' (16000) {
 		},
 		/* [11] */
 		AE_Effect_Match_Name {
-			"tl_letterbox"
+			"tl_letterbox_II"
 		},
 		/* [12] */
 		AE_Reserved_Info {

@@ -136,19 +136,20 @@ typedef struct {
     PF_Fixed            y_offF;
     
     PF_FpLong            x_offsetF;
-    PF_FpLong            y_offsetUpF;
-    PF_FpLong            y_offsetDownF;
+    PF_FpLong            y_offsetF;
+
     
-      PF_FpLong             layerscale_x;
-      PF_FpLong             layerscale_y;
+    PF_FpLong             layerscale_x;
+    PF_FpLong             layerscale_y;
    PF_FpLong              layerscale_dflt_x;
     PF_FpLong              layerscale_dflt_y;
-    AEGP_TwoDVal          positionTD;
+    PF_FpLong             positionXF;
+    PF_FpLong             positionYF;
     AEGP_TwoDVal          scaleTD;
     AEGP_TwoDVal          acPointTD;
     PF_FpLong             compWidthF;
     PF_FpLong             compHeightF;
-     PF_FpLong              compPixRatioF;
+     PF_FpLong             compPixRatioF;
     PF_FpLong              compRatioF;
     
 } prerender_letP, *pre_render_letPP, **pre_render_letPH;
