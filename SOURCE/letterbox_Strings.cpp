@@ -65,12 +65,11 @@ TableString		g_strs[StrID_NUMTYPES] = {
      StrID_AEGP_GET_ANCHORPOINT,       "Return anchor point of the layer", //invisible by final user
      StrID_AEGP_GET_SCALE,             "Return scale of the layer", //invisible by final user
 
-     StrID_AEGP_GET_COMP_SIZE,          "Return width height of the composition", //invisible by final user
-     StrID_AEGP_GET_COMP_PIX_RATIO,     "Return Pixel Aspect ratio of the comp", //invisible by final user
-
-
-	
-	StrID_Err_LoadSuite,		"Couldn't acquire suite.",
+    
+    StrID_AEGP_GET_COMP_PIX_RATIO,     "Return Pixel Aspect ratio of the comp", //invisible by final user
+    StrID_AEGP_GETCOMP_SIZE,          "Return width height of the compo",
+    
+    StrID_Err_LoadSuite,		"Couldn't acquire suite.",
 	StrID_Err_FreeSuite,		"Couldn't free suite.",
 
 	StrID_PresetNameDisabled,	"Preset Locked",

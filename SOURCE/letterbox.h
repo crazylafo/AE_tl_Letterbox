@@ -127,7 +127,7 @@ typedef struct {
     PF_Pixel            Color;
     PF_Pixel32          Color32;
     PF_FpLong           scaleFactorF;
-    PF_FpLong           scaleFactorxF;
+    PF_FpLong          scaleFactorxF;
     PF_FpLong           scaleFactoryF;
     PF_Boolean          compModeB;
    A_long               forceSizeB;
@@ -136,19 +136,20 @@ typedef struct {
     PF_Fixed            y_offF;
     
     PF_FpLong            x_offsetF;
-    PF_FpLong            y_offsetUpF;
-    PF_FpLong            y_offsetDownF;
+    PF_FpLong            y_offsetF;
+
     
-    PF_Fixed              layerscale_x;
-    PF_Fixed              layerscale_y;
-    PF_Fixed              layerscale_dflt_x;
-    PF_Fixed              layerscale_dflt_y;
-    AEGP_TwoDVal          positionTD;
+    PF_FpLong             layerscale_x;
+    PF_FpLong             layerscale_y;
+   PF_FpLong              layerscale_dflt_x;
+    PF_FpLong              layerscale_dflt_y;
+    PF_FpLong             positionXF;
+    PF_FpLong             positionYF;
     AEGP_TwoDVal          scaleTD;
     AEGP_TwoDVal          acPointTD;
     PF_FpLong             compWidthF;
     PF_FpLong             compHeightF;
-    AEGP_DownsampleFactor dsfP;
+     PF_FpLong             compPixRatioF;
     PF_FpLong              compRatioF;
     
 } prerender_letP, *pre_render_letPP, **pre_render_letPH;
@@ -180,8 +181,9 @@ enum {
     AEGP_GET_POSITION,
     AEGP_GET_ANCHORPOINT,
     AEGP_GET_SCALE,
-    AEGP_GET_COMP_SIZE,
+    
     AEGP_GET_COMP_PIX_RATIO,
+    AEGP_GET_COMPSIZE,
 	LETB_NUM_PARAMS
 };
 
@@ -206,8 +208,8 @@ enum {
     AEGP_GET_POSITION_DISK_ID,
     AEGP_GET_ANCHORPOINT_DISK_ID,
     AEGP_GET_SCALE_DISK_ID,
-    AEGP_GET_COMP_SIZE_DISK_ID,
-    AEGP_GET_COMP_PIX_RATIO_DISK_ID
+    AEGP_GET_COMP_PIX_RATIO_DISK_ID,
+    AEGP_GET_COMPSIZE_DISK_ID,
 };
 
 extern "C" {

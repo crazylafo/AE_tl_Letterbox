@@ -17,7 +17,7 @@ resource 'PiPL' (16000) {
 		},
 		/* [3] */
 		Category {
-			"Tl"
+			"tl"
 		},
 #ifdef AE_OS_WIN
 	#ifdef AE_PROC_INTELx64
@@ -59,7 +59,7 @@ resource 'PiPL' (16000) {
 		},
 		/* [11] */
 		AE_Effect_Match_Name {
-			"tl_letterbox"
+			"tl_letterbox_II"
 		},
 		/* [12] */
 		AE_Reserved_Info {
