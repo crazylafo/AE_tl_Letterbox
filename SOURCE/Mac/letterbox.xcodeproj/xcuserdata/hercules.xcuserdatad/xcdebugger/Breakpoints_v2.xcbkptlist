@@ -10,12 +10,12 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../letterbox.cpp"
-            timestampString = "522689886.544309"
+            timestampString = "539818141.660845"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1618"
-            endingLineNumber = "1618"
-            landmarkName = "Render( PF_InData *in_data, PF_OutData *out_data, PF_ParamDef *params[], PF_LayerDef *output)"
+            startingLineNumber = "1445"
+            endingLineNumber = "1445"
+            landmarkName = "UpdateParameterUI( PF_InData *in_data, PF_OutData *out_data, PF_ParamDef *params[], PF_LayerDef *outputP)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -31,6 +31,38 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "163"
             endingLineNumber = "163"
+            landmarkName = "SequenceSetup ( PF_InData *in_data, PF_OutData *out_data)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../letterbox.cpp"
+            timestampString = "539818218.561788"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "563"
+            endingLineNumber = "563"
+            landmarkName = "GetRatioFromWorld ( PF_InData *in_data, PF_EffectWorld *detectWorldP, PF_PixelFormat pxformat, PF_FpLong *detectedRatioF)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../letterbox.cpp"
+            timestampString = "539818591.615404"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "543"
+            endingLineNumber = "543"
             landmarkName = "GetRatioFromWorld ( PF_InData *in_data, PF_EffectWorld *detectWorldP, PF_PixelFormat pxformat, PF_FpLong *detectedRatioF)"
             landmarkType = "7">
          </BreakpointContent>

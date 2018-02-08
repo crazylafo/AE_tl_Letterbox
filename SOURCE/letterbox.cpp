@@ -496,70 +496,6 @@ GetPresetRatioValue(
 
 
 
-//Get 8bits Pixel value at point (x,y). from the SDK documentation.
-static  PF_Pixel
-*sampleIntegral32(PF_EffectWorld &def,
-                  int x,
-                  int y)
-{
-    return (PF_Pixel*)((char*)def.data +
-                       (y * def.rowbytes) +
-                       (x * sizeof(PF_Pixel)));
-}
-//same in 16bits
-static PF_Pixel16
-*sampleIntegral64(PF_EffectWorld &def,
-                  int x,
-                  int y)
-{  assert(PF_WORLD_IS_DEEP(&def));
-    return (PF_Pixel16*)((char*)def.data +
-                         (y * def.rowbytes) +
-                         (x * sizeof(PF_Pixel16)));
-}
-//same in 32 bits
-static  PF_PixelFloat
-*sampleIntegral128(PF_EffectWorld &def,
-                   int x,
-                   int y)
-{
-    return (PF_PixelFloat*)((char*)def.data +
-                            (y * def.rowbytes) +
-                            (x * sizeof(PF_PixelFloat)));
-}
-
-//ADAPT FOR EVERY COLORSPACES. IN ORDER TO GROUP THE DETECTION.
-static void
-GetPixelValue (
-               PF_EffectWorld  *WorldP,
-               PF_PixelFormat  pxFormat,
-               int x,
-               int y,
-               PF_PixelFloat		*pixvalueF)
-{
-    switch (pxFormat)
-    {
-        case PF_PixelFormat_ARGB128:
-            pixvalueF = sampleIntegral128(*WorldP, x, y);
-            break;
-            
-        case PF_PixelFormat_ARGB64:
-            PF_Pixel16 temp16;
-            temp16 = *sampleIntegral64(*WorldP, x, y);
-            pixvalueF->red =   PF_FpShort (temp16.red)/PF_MAX_CHAN16;
-            pixvalueF->green = PF_FpShort (temp16.green)/PF_MAX_CHAN16;
-            pixvalueF->blue =  PF_FpShort (temp16.blue)/PF_MAX_CHAN16;
-            break;
-            
-        case PF_PixelFormat_ARGB32:
-            PF_Pixel temp8;
-            temp8 = *sampleIntegral32(*WorldP, x, y);
-            pixvalueF->red =   PF_FpShort  (temp8.red)/PF_MAX_CHAN8;
-            pixvalueF->green = PF_FpShort( temp8.green)/PF_MAX_CHAN8;
-            pixvalueF->blue =  PF_FpShort (temp8.blue)/PF_MAX_CHAN8;
-            break;
-            
-    }
-}
 
 //DETECT RATIO IN THE LAYER
 static void
@@ -569,12 +505,12 @@ GetRatioFromWorld (
                    PF_PixelFormat  pxformat,
                    PF_FpLong		*detectedRatioF)
 {
-    PF_FpLong InputWidthF ,InputHeightF ,PixRatioNumF,PixRatioDenF, layerRatioF, TolerenceF;
-    A_long  cordX, cordY;
+
+    PF_FpLong InputWidthF ,InputHeightF ,PixRatioNumF,PixRatioDenF, layerRatioF;
     A_long state =0;//value to indicate the state of the detection.
     
-    InputWidthF  = in_data->width;
-    InputHeightF  = in_data->height;
+    InputWidthF  = detectWorldP->width;
+    InputHeightF  = detectWorldP->height;
     PixRatioNumF = in_data->pixel_aspect_ratio.num;
     PixRatioDenF = in_data->pixel_aspect_ratio.den;
     
@@ -582,188 +518,82 @@ GetRatioFromWorld (
     scale_y = in_data->downsample_y.num / (float)in_data->downsample_y.den;
     InputWidthF  *= scale_x;
     InputHeightF  *= scale_y;
+
+    PF_PixelFloat TolerencepxF;
+    TolerencepxF.blue =0.01;
+    TolerencepxF.green =0.01;
+    TolerencepxF.red =0.01;
+    TolerencepxF.alpha =1;
     
-    TolerenceF = 0.2;
     
+    //vertical Analys
+    PF_FpShort vBlueS [detectWorldP->height];
+    PF_FpShort vGreenS [detectWorldP->height];
+    PF_FpShort vRedS [detectWorldP->height];
     
-    PF_PixelFloat PixelValue;
-    GetPixelValue (detectWorldP, pxformat,2,2, &PixelValue); //first hopthesis : no letterbox att all so return the composition ratio.
-    PF_FpLong sum = PixelValue.red +PixelValue.green+ PixelValue.blue;
-    if (sum/3 >TolerenceF)
+    PF_FpShort hBlueS [detectWorldP->width];
+    PF_FpShort hGreenS [detectWorldP->width];
+    PF_FpShort hRedS [detectWorldP->width];
+    
+    for (int i =1; i< int( detectWorldP->height*0.5); i++)
     {
-        layerRatioF = -1; // if -1 ==> nothing detected. if positive value something detected.
-    }
-    
-    else
-    {
-        state =1; //go to next state
-    }
-    
-    //2nd hypothesis ->vertical black scopes.
-    if (state ==1)
-    {
-        for (A_long i =0; i <= InputWidthF /2; i++)
+        for (int j =1; j< int( detectWorldP->width*0.5); j++)
         {
-            PF_PixelFloat PixelValueVh; // for vertical detection. scan horizontal to detect the break.
-            GetPixelValue (detectWorldP, pxformat,i,2, &PixelValueVh);
-            PF_FpLong sumTwo = PixelValueVh.red +PixelValueVh.green+ PixelValueVh.blue;
-            if (state !=1) //shortcut to exit the loop
-            {
-                break;
-            }
-            else if (i ==(InputWidthF /2)-1)
-            {
-                state =3; //go to next state
-            }
+            PF_PixelFloat PixelValue;
+            GetPixelValue(detectWorldP, pxformat, j, i, &PixelValue);
+            vBlueS[i] +=PixelValue.blue;
+            vGreenS[i] +=PixelValue.green;
+            vRedS[i] +=PixelValue.red;
             
-            else if(i > 2 && //security of 2 black lines
-                    (sumTwo/3 >TolerenceF))
-            {
-                //blackout  detected so check verticaly if it's continue
-                cordX =i-1;// go back one pixel earlier with the last black value.
-                for (A_long j =0; j <= InputHeightF /2; j++)
-                {
-                    PF_PixelFloat PixelValueVV;
-                    GetPixelValue (detectWorldP, pxformat,cordX,j, &PixelValueVV);
-                    PF_FpLong sumThree =PixelValueVV.red +PixelValueVV.green + PixelValueVV.blue;
-                    if(j > 2 && //security of 2 black lines
-                       (sumThree >TolerenceF))
-                    {
-                        layerRatioF =-1;  //  the black is not continue so its a wrong scope
-                        state = -1; // error so go back to the exit state and brack the upper loop.
-                        break;
-                    }
-                    else if (j == A_long (InputHeightF /2)-1)
-                    {
-                        //the black line was continue on the half part of the frame so we assume it's the good one. Go to check downstare
-                        state =2;
-                        break;
-                    }
-                }
-            }
+            hBlueS [j]  +=PixelValue.blue;
+            hGreenS [j] +=PixelValue.green;
+            hRedS [j]   +=PixelValue.red;
         }
     }
-    //if it's a positive result, check the other side
-    if (state ==2)
+    int VvalueA, HvalueA;
+    
+    if (vBlueS[10] <TolerencepxF.blue &&
+        vBlueS[10] <TolerencepxF.green &&
+        vBlueS[10] <TolerencepxF.red )
     {
-        for (A_long i =0; i <= InputHeightF /2; i++)
+        for (int i =10; i< int( detectWorldP->height*0.5); i++)
         {
-            
-            PF_PixelFloat PixelValueVh; // for vertical detection. scan horizontal to detect the break.
-            GetPixelValue (detectWorldP, pxformat,A_long(InputWidthF )-cordX,i, &PixelValueVh);
-            PF_FpLong sumOne = PixelValueVh.red +PixelValueVh.green+ PixelValueVh.blue;
-            
-            if (state !=2)
+            if (vBlueS[i] >TolerencepxF.blue  || vBlueS[i] >TolerencepxF.green || vBlueS[i] >TolerencepxF.red)
             {
+                VvalueA = i-1;
+                *detectedRatioF = PF_FpLong (detectWorldP->width/(detectWorldP->height- 2*VvalueA));
                 break;
             }
             
-            if (sumOne/3 >TolerenceF)
+        }
+    }
+    else if (hBlueS[10] <TolerencepxF.blue &&
+             hBlueS[10] <TolerencepxF.green &&
+             hBlueS[10] <TolerencepxF.red )
+
+    {
+        for (int i =10; i< int( detectWorldP->width*0.5); i++)
+        {
+            if (hBlueS[i] >TolerencepxF.blue  || hBlueS[i] >TolerencepxF.green || hBlueS[i] >TolerencepxF.red)
             {
-                state =-1; //go to next state
+                HvalueA = i-1;
+                *detectedRatioF = PF_FpLong (detectWorldP->width - 2*HvalueA/detectWorldP->height);
                 break;
-            }
-            else if (i == InputHeightF /2 -1)
-            {
-                layerRatioF =(InputWidthF  -(2*cordX))/InputHeightF ;
-                state =0;
             }
         }
         
     }
-    
-    
-    
-    //3rd hypothesis ->horizontal black scopes.
-    if (state ==3)
-    {
-        for (A_long i =0; i <= InputHeightF /2; i++)
-        {
-            PF_PixelFloat PixelValueVV; // for vertical detection. scan vertical to detect the break.
-            GetPixelValue (detectWorldP, pxformat,2,i, &PixelValueVV);
-            PF_FpLong sumTwo = PixelValueVV.red +PixelValueVV.green+ PixelValueVV.blue;
-            
-            if (state !=3) //shortcut to exit the loop
-            {
-                break;
-            }
-            if (i == A_long (InputHeightF /2)-1)
-            {
-                state =-1;
-                
-            }
-            
-            else if(i > 2 && //security of 2 black lines
-                    (sumTwo/3 >TolerenceF))
-            {
-                //blackout  detected so check verticaly if it's continue
-                cordY =i-1;// go back one pixel earlier with the last black value.
-                
-                
-                for (A_long j =0; j <= InputWidthF /2; j++)
-                {
-                    PF_PixelFloat PixelValueVh;
-                    GetPixelValue (detectWorldP, pxformat,j,cordY, &PixelValueVh);
-                    PF_FpLong sumThree = PixelValueVh.red +PixelValueVh.green+ PixelValueVh.blue;
-                    if(j > 2 && //security of 2 black lines
-                       (sumThree/3 >TolerenceF))
-                    {
-                        layerRatioF =-1;  //  the black is not continue so its a wrong scope
-                        state =-1; // error so go back to the exit state and brack the upper loop.
-                        break;
-                    }
-                    else if (j == A_long (InputWidthF /2)-1)
-                    {
-                        //the black line was continue on the half part of the frame so we assume it's the good one
-                        
-                        state = 4; // we founded what we expected to go to the exit state.
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    
-    //if it's a positive result, check on the down side.
-    //if it's a positive result, check the other side
-    if (state ==4)
-    {
-        for (A_long i =0; i <= InputWidthF /2; i++)
-        {
-            
-            PF_PixelFloat PixelValueVh; // for vertical detection. scan horizontal to detect the break.
-            GetPixelValue (detectWorldP, pxformat,i,A_long (InputHeightF )-cordY, &PixelValueVh);
-            PF_FpLong sumOne = PixelValueVh.red +PixelValueVh.green+ PixelValueVh.blue;
-            
-            if (state !=4)
-            {
-                break;
-            }
-            
-            if (sumOne >TolerenceF)
-            {
-                state =-1; //go to next state
-                break;
-            }
-            else if (i == InputHeightF /2 -1)
-            {
-                layerRatioF =InputWidthF /(InputHeightF  -(2*cordY));
-                state =0;
-            }
-        }
-        
-    }
-    
-    
+
+
     //if  not detectd before
-    if ((layerRatioF ==-1)|| (state ==-1))
+    else
     {
         *detectedRatioF = (((double)InputWidthF ) *  PixRatioNumF) / ((double)InputHeightF *PixRatioDenF); //ratio input from layer
     }
-    else // the function returns the value
-    {
+
         *detectedRatioF = ceil (layerRatioF*100)/100;
-    }
+
+
 }
 
 
@@ -789,21 +619,13 @@ CalculateBox(
     
     
     //Modification of offsets here.
-    if (letP->compModeB == TRUE)
-    {
-        letP->x_offsetF = PF_FpLong (double(letP->InputWidthF -letP->compWidthF)*letP->userRatioF/letP->layerRatioF*2); //letP->compWidthF*0.5 - letP->positionYF;
-        letP->y_offsetF = PF_FpLong (double(letP->InputHeightF  - letP->compHeightF)/double(2*letP->userRatioF));  //letP->compHeightF*0.5 - letP->positionYF;
-    }
-    
 
-    
-    
 	//definitions for horizontal letterbox
-    CondBlackHupF = ((letP->InputHeightF*letP->scaleFactoryF  - (letP->InputWidthF/(letP->userRatioF)))/ 2/letP->scaleFactoryF) + float (letP->y_offsetF);
+    CondBlackHupF = ((letP->InputHeightF*letP->scaleFactoryF  - (letP->InputWidthF/(letP->userRatioF)))/ 2/letP->scaleFactoryF) ;
     CondBlackHdownF =   letP->InputHeightF - CondBlackHupF;
 
 	//definitions for verticals letterbox
-    CondBlackVleftF = ((letP->InputWidthF*letP->scaleFactorxF  - (letP->InputHeightF *  letP->userRatioF))/2/letP->scaleFactorxF)+ float (letP->x_offsetF);
+    CondBlackVleftF = ((letP->InputWidthF*letP->scaleFactorxF  - (letP->InputHeightF *  letP->userRatioF))/2/letP->scaleFactorxF);
     CondBlackVrightF = letP->InputWidthF   -  CondBlackVleftF;
 
 
@@ -1234,6 +1056,7 @@ UserChangedParam(
         if (params[LETB_CHECKBOX]->u.bd.value == TRUE)
         {
             params[LETB_MODE]->u.pd.value = MODE_ADVANCED;
+            params[LETB_MODE]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
             ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
                                                            LETB_MODE,
                                                            params[LETB_MODE]));
@@ -1249,31 +1072,37 @@ UserChangedParam(
 				{
 					PF_ParamDef paramInput;
 					AEFX_CLR_STRUCT(paramInput);
-                
+                    AEFX_CLR_STRUCT(scanWorldP);
 					ERR(PF_CHECKOUT_PARAM(	in_data,
-										  LETB_INPUT,
+										  LETB_LAYER_ANALYS,
 										  in_data->current_time,
 										  in_data->time_step,
 										  in_data->time_scale,
 										  &paramInput));
 					scanWorldP = &paramInput.u.ld;
-					ERR2(PF_CHECKIN_PARAM(in_data, &paramInput));
+					
 
 					// temporary problem with the offitial getpixelformat in windows so cheat with this conditions group.
-					if (scanWorldP->world_flags == 0)
-					{
-						detectFormat = PF_PixelFormat_ARGB32;
-					}
-					else if (PF_WORLD_IS_DEEP(scanWorldP))
-					{
-						detectFormat = PF_PixelFormat_ARGB64;
-					}
-					else
-					{
-						detectFormat = PF_PixelFormat_ARGB128;
-					}
-			 
-					GetRatioFromWorld (in_data, scanWorldP, detectFormat,&scanlayerRatioF);
+                    AEGP_ProjectH projH;
+                    AEGP_ProjBitDepth bit_depthP;
+                    ERR(suites.ProjSuite5()->AEGP_GetProjectByIndex(0, &projH));
+                    ERR(suites.ProjSuite6()->AEGP_GetProjectBitDepth(projH, &bit_depthP));
+                    
+                    AEFX_CLR_STRUCT(detectFormat);
+                    if (bit_depthP == AEGP_ProjBitDepth_8) //the same for the two worlds
+                    {
+                        detectFormat = PF_PixelFormat_ARGB32;
+                    }
+                    else if (bit_depthP == AEGP_ProjBitDepth_16)
+                    {
+                        detectFormat = PF_PixelFormat_ARGB64;
+                    }
+                    else
+                    {
+                        detectFormat = PF_PixelFormat_ARGB128;
+                    }
+                 	GetRatioFromWorld (in_data, scanWorldP, detectFormat,&scanlayerRatioF);
+                    ERR2(PF_CHECKIN_PARAM(in_data, &paramInput));
                 }
                 
             }
@@ -2190,7 +2019,7 @@ SmartRender(
     AEGP_SuiteHandler suites(in_data->pica_basicP);
     
 
-    PF_ParamDef param_preset, param_slider, param_mode, param_trsp, param_color, param_layer_source, param_cb_detect;
+    PF_ParamDef param_preset, param_slider, param_mode, param_trsp, param_color;
    
 
 

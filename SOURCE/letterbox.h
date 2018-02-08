@@ -33,6 +33,7 @@
 #include "String_Utils.h"
 #include "AEGP_SuiteHandler.h"
 #include "PrSDKAESupport.h"
+#include "getPixel.h"
 
 
 #define	MAJOR_VERSION		1

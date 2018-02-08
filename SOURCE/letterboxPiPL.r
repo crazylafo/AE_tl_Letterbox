@@ -13,7 +13,7 @@ resource 'PiPL' (16000) {
 		},
 		/* [2] */
 		Name {
-			"tl_Letterbox"
+			"tl_Letterbox II"
 		},
 		/* [3] */
 		Category {
