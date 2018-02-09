@@ -543,7 +543,7 @@ GetRatioFromWorld (
     {
         AEFX_CLR_STRUCT(vBlueS[i]);
         AEFX_CLR_STRUCT(vGreenS[i]);
-       // AEFX_CLR_STRUCT(vRedS[i]);
+        AEFX_CLR_STRUCT(vRedS[i]);
         for (A_long j =1; j< A_long (InputWidthF); j++)
         {
             PF_PixelFloat PixelValue;
@@ -554,13 +554,13 @@ GetRatioFromWorld (
             AEFX_CLR_STRUCT(tempF);
             tempF.blue=  A_long (PixelValue.blue*PF_MAX_CHAN8);
             tempF.green= A_long (PixelValue.green*PF_MAX_CHAN8);
-           // tempF.red =  A_long (PixelValue.red*PF_MAX_CHAN8);
+            tempF.red =  A_long (PixelValue.red*PF_MAX_CHAN8);
            
            
             
             vBlueS[i]  +=  tempF.blue;
             vGreenS[i] +=  tempF.green;
-         //   vRedS[i]   +=  tempF.red;
+            vRedS[i]   +=  tempF.red;
         }
     }
     
@@ -620,8 +620,6 @@ GetRatioFromWorld (
         
     }
 
-
-    //if  not detected before
     else
     {
         *detectedRatioF = (((double)InputWidthF ) *  PixRatioNumF) / ((double)InputHeightF *PixRatioDenF); //ratio input from layer
