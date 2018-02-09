@@ -10,7 +10,7 @@
 #define getPixel_h
 
 
-#endif /* getPixel_h */
+
 
 
 static  PF_Pixel
@@ -78,4 +78,4 @@ GetPixelValue(
     }
 }
 
-
+#endif /* getPixel_h */

@@ -506,8 +506,8 @@ GetRatioFromWorld (
                    PF_FpLong		*detectedRatioF)
 {
 
-    PF_FpLong InputWidthF ,InputHeightF ,PixRatioNumF,PixRatioDenF, layerRatioF;
-    A_long state =0;//value to indicate the state of the detection.
+    PF_FpLong InputWidthF ,InputHeightF ,PixRatioNumF,PixRatioDenF;
+    //A_long state =0;//value to indicate the state of the detection.
     
     InputWidthF  = detectWorldP->width;
     InputHeightF  = detectWorldP->height;
@@ -519,65 +519,101 @@ GetRatioFromWorld (
     InputWidthF  *= scale_x;
     InputHeightF  *= scale_y;
 
-    PF_PixelFloat TolerencepxF;
-    TolerencepxF.blue =0.01;
-    TolerencepxF.green =0.01;
-    TolerencepxF.red =0.01;
-    TolerencepxF.alpha =1;
+
+    A_long Tolerencepx8_blue =10;
+    A_long Tolerencepx8_green =10;
+    A_long Tolerencepx8_red =10;
+
+    
+    A_long halfWidthA = A_long (InputWidthF*0.5);
+    A_long halfHeightA = A_long (InputHeightF *0.5);
     
     
-    //vertical Analys
-    PF_FpShort vBlueS [detectWorldP->height];
-    PF_FpShort vGreenS [detectWorldP->height];
-    PF_FpShort vRedS [detectWorldP->height];
+    A_long vBlueS[halfWidthA];
+    A_long  vGreenS[halfWidthA];
+    A_long  vRedS[halfWidthA];
     
-    PF_FpShort hBlueS [detectWorldP->width];
-    PF_FpShort hGreenS [detectWorldP->width];
-    PF_FpShort hRedS [detectWorldP->width];
+    A_long hBlueS [halfHeightA];
+    A_long hGreenS [halfHeightA];
+    A_long hRedS [halfHeightA];
     
-    for (int i =1; i< int( detectWorldP->height*0.5); i++)
+    
+    
+    for (A_long i =1; i< halfHeightA; i++)
     {
-        for (int j =1; j< int( detectWorldP->width*0.5); j++)
+        AEFX_CLR_STRUCT(vBlueS[i]);
+        AEFX_CLR_STRUCT(vGreenS[i]);
+       // AEFX_CLR_STRUCT(vRedS[i]);
+        for (A_long j =1; j< A_long (InputWidthF); j++)
         {
             PF_PixelFloat PixelValue;
-            GetPixelValue(detectWorldP, pxformat, j, i, &PixelValue);
-            vBlueS[i] +=PixelValue.blue;
-            vGreenS[i] +=PixelValue.green;
-            vRedS[i] +=PixelValue.red;
+            AEFX_CLR_STRUCT(PixelValue);
+             GetPixelValue(detectWorldP, pxformat, j, i, &PixelValue);
             
-            hBlueS [j]  +=PixelValue.blue;
-            hGreenS [j] +=PixelValue.green;
-            hRedS [j]   +=PixelValue.red;
+            PF_Pixel8 tempF ;
+            AEFX_CLR_STRUCT(tempF);
+            tempF.blue=  A_long (PixelValue.blue*PF_MAX_CHAN8);
+            tempF.green= A_long (PixelValue.green*PF_MAX_CHAN8);
+           // tempF.red =  A_long (PixelValue.red*PF_MAX_CHAN8);
+           
+           
+            
+            vBlueS[i]  +=  tempF.blue;
+            vGreenS[i] +=  tempF.green;
+         //   vRedS[i]   +=  tempF.red;
         }
     }
-    int VvalueA, HvalueA;
     
-    if (vBlueS[10] <TolerencepxF.blue &&
-        vBlueS[10] <TolerencepxF.green &&
-        vBlueS[10] <TolerencepxF.red )
+  
+
+    for (A_long k  =1; k<halfWidthA; k++)
     {
-        for (int i =10; i< int( detectWorldP->height*0.5); i++)
+        AEFX_CLR_STRUCT(hBlueS[k]);
+        AEFX_CLR_STRUCT(hGreenS[k]);
+       AEFX_CLR_STRUCT(hRedS[k]);
+        for (A_long l =1; l< A_long (InputHeightF); l++)
         {
-            if (vBlueS[i] >TolerencepxF.blue  || vBlueS[i] >TolerencepxF.green || vBlueS[i] >TolerencepxF.red)
+            PF_PixelFloat PixelValueh;
+            AEFX_CLR_STRUCT(PixelValueh);
+            GetPixelValue (detectWorldP, pxformat, k, l, &PixelValueh);
+            
+            PF_Pixel8 temphF ;
+            AEFX_CLR_STRUCT(temphF);
+            temphF.blue= A_long (PixelValueh.blue*PF_MAX_CHAN8);
+            temphF.green=A_long (PixelValueh.green*PF_MAX_CHAN8);
+            temphF.red = A_long (PixelValueh.red*PF_MAX_CHAN8);
+           
+            
+            hBlueS[k]  +=  temphF.blue;
+            hGreenS[k] +=  temphF.green;
+            hRedS[k]   +=  temphF.red;
+        }
+    }
+    
+    
+    if ( (vBlueS[10]) <Tolerencepx8_blue &&
+         (vGreenS[10]) <Tolerencepx8_green)
+    {
+        for (A_long i =10; i< halfHeightA; i++)
+        {
+            if (vBlueS[i] >= Tolerencepx8_blue  ||  vGreenS[i] >= Tolerencepx8_green || vRedS[i] >= Tolerencepx8_red)
             {
-                VvalueA = i-1;
-                *detectedRatioF = PF_FpLong (detectWorldP->width/(detectWorldP->height- 2*VvalueA));
+                *detectedRatioF = (((double)InputWidthF ) *  PixRatioNumF) / ((double)InputHeightF *PixRatioDenF - 2*i);
                 break;
             }
-            
         }
     }
-    else if (hBlueS[10] <TolerencepxF.blue &&
-             hBlueS[10] <TolerencepxF.green &&
-             hBlueS[10] <TolerencepxF.red )
+    
+    
+    else if (hBlueS[10] <Tolerencepx8_blue &&
+             hGreenS[10] <Tolerencepx8_green)
 
     {
-        for (int i =10; i< int( detectWorldP->width*0.5); i++)
+        for (A_long i =10; i< halfWidthA; i++)
         {
-            if (hBlueS[i] >TolerencepxF.blue  || hBlueS[i] >TolerencepxF.green || hBlueS[i] >TolerencepxF.red)
+            if (hBlueS[i] >= Tolerencepx8_blue  || hBlueS[i] >= Tolerencepx8_green|| hBlueS[i] >= Tolerencepx8_red)
             {
-                HvalueA = i-1;
-                *detectedRatioF = PF_FpLong (detectWorldP->width - 2*HvalueA/detectWorldP->height);
+                *detectedRatioF = (((double)InputWidthF ) *  PixRatioNumF - 2*i) / ((double)InputHeightF *PixRatioDenF);
                 break;
             }
         }
@@ -585,19 +621,14 @@ GetRatioFromWorld (
     }
 
 
-    //if  not detectd before
+    //if  not detected before
     else
     {
         *detectedRatioF = (((double)InputWidthF ) *  PixRatioNumF) / ((double)InputHeightF *PixRatioDenF); //ratio input from layer
     }
 
-        *detectedRatioF = ceil (layerRatioF*100)/100;
-
 
 }
-
-
-
 
 
 static PF_FpLong
@@ -1468,6 +1499,35 @@ UpdateParameterUI(
                 }
 
             }
+            //HIDE THOSE PARAM ON ADOBE PREMIERE TOPIC_GR3_DISK_ID   LETB_SIZE_SOURCE_DISK_ID)   LETB_FORCE_SCALE_DISK_ID
+           
+          
+            
+          
+            if (!err)
+                {
+                    param_copy[LETB_GR3].ui_flags |=	PF_PUI_INVISIBLE;
+                    ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
+                                                                    LETB_GR3,
+                                                                    &param_copy[LETB_GR3]));
+                }
+            if (!err)
+            {
+                param_copy[LETB_SIZE_SOURCE].ui_flags |=	PF_PUI_INVISIBLE;
+                ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
+                                                                LETB_SIZE_SOURCE,
+                                                                &param_copy[LETB_SIZE_SOURCE]));
+            }
+            if (!err)
+            {
+                param_copy[LETB_FORCE_SCALE].ui_flags |=	PF_PUI_INVISIBLE;
+                ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
+                                                                LETB_FORCE_SCALE,
+                                                                &param_copy[LETB_FORCE_SCALE]));
+            }
+            
+          
+
             // Hide on transparent/not transparent
             if(!err && (params[LETB_TRSP]->u.bd.value == TRUE))
             {
