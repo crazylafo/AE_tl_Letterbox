@@ -38,7 +38,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -332,6 +332,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\Util\AEFX_SuiteHelper.h" />
+    <ClInclude Include="..\getPixel.h" />
     <ClInclude Include="..\letterbox_Strings.h" />
     <ClInclude Include="..\letterbox.h" />
     <ClInclude Include="..\..\..\Headers\A.h" />

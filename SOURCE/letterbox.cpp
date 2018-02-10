@@ -520,47 +520,34 @@ GetRatioFromWorld (
     InputHeightF  *= scale_y;
 
 
-    A_long Tolerencepx8_blue =10;
-    A_long Tolerencepx8_green =10;
-    A_long Tolerencepx8_red =10;
+    PF_FpShort Tolerencepx8_blue = float (0.010);
+	PF_FpShort Tolerencepx8_green = float(0.010);
+	PF_FpShort Tolerencepx8_red = float(0.010);
 
     
     A_long halfWidthA = A_long (InputWidthF*0.5);
     A_long halfHeightA = A_long (InputHeightF *0.5);
+
+	PF_FpLong ratioHF, ratioVF;
     
-    
-    A_long vBlueS[halfWidthA];
-    A_long  vGreenS[halfWidthA];
-    A_long  vRedS[halfWidthA];
-    
-    A_long hBlueS [halfHeightA];
-    A_long hGreenS [halfHeightA];
-    A_long hRedS [halfHeightA];
-    
-    
-    
+ 
     for (A_long i =1; i< halfHeightA; i++)
     {
-        AEFX_CLR_STRUCT(vBlueS[i]);
-        AEFX_CLR_STRUCT(vGreenS[i]);
-        AEFX_CLR_STRUCT(vRedS[i]);
+
         for (A_long j =1; j< A_long (InputWidthF); j++)
         {
             PF_PixelFloat PixelValue;
             AEFX_CLR_STRUCT(PixelValue);
              GetPixelValue(detectWorldP, pxformat, j, i, &PixelValue);
             
-            PF_Pixel8 tempF ;
-            AEFX_CLR_STRUCT(tempF);
-            tempF.blue=  A_long (PixelValue.blue*PF_MAX_CHAN8);
-            tempF.green= A_long (PixelValue.green*PF_MAX_CHAN8);
-            tempF.red =  A_long (PixelValue.red*PF_MAX_CHAN8);
-           
-           
-            
-            vBlueS[i]  +=  tempF.blue;
-            vGreenS[i] +=  tempF.green;
-            vRedS[i]   +=  tempF.red;
+			if (PixelValue.blue > Tolerencepx8_blue || PixelValue.green > Tolerencepx8_green || PixelValue.red > Tolerencepx8_red)
+			{
+				ratioHF = (((double)InputWidthF) *  PixRatioNumF) / ((double)InputHeightF *PixRatioDenF - 2 * i);
+				i = halfHeightA - 1;
+				break;
+
+			}
+			
         }
     }
     
@@ -568,61 +555,37 @@ GetRatioFromWorld (
 
     for (A_long k  =1; k<halfWidthA; k++)
     {
-        AEFX_CLR_STRUCT(hBlueS[k]);
-        AEFX_CLR_STRUCT(hGreenS[k]);
-       AEFX_CLR_STRUCT(hRedS[k]);
         for (A_long l =1; l< A_long (InputHeightF); l++)
         {
             PF_PixelFloat PixelValueh;
             AEFX_CLR_STRUCT(PixelValueh);
             GetPixelValue (detectWorldP, pxformat, k, l, &PixelValueh);
-            
-            PF_Pixel8 temphF ;
-            AEFX_CLR_STRUCT(temphF);
-            temphF.blue= A_long (PixelValueh.blue*PF_MAX_CHAN8);
-            temphF.green=A_long (PixelValueh.green*PF_MAX_CHAN8);
-            temphF.red = A_long (PixelValueh.red*PF_MAX_CHAN8);
-           
-            
-            hBlueS[k]  +=  temphF.blue;
-            hGreenS[k] +=  temphF.green;
-            hRedS[k]   +=  temphF.red;
-        }
-    }
-    
-    
-    if ( (vBlueS[10]) <Tolerencepx8_blue &&
-         (vGreenS[10]) <Tolerencepx8_green)
-    {
-        for (A_long i =10; i< halfHeightA; i++)
-        {
-            if (vBlueS[i] >= Tolerencepx8_blue  ||  vGreenS[i] >= Tolerencepx8_green || vRedS[i] >= Tolerencepx8_red)
-            {
-                *detectedRatioF = (((double)InputWidthF ) *  PixRatioNumF) / ((double)InputHeightF *PixRatioDenF - 2*i);
-                break;
-            }
-        }
-    }
-    
-    
-    else if (hBlueS[10] <Tolerencepx8_blue &&
-             hGreenS[10] <Tolerencepx8_green)
 
-    {
-        for (A_long i =10; i< halfWidthA; i++)
-        {
-            if (hBlueS[i] >= Tolerencepx8_blue  || hBlueS[i] >= Tolerencepx8_green|| hBlueS[i] >= Tolerencepx8_red)
-            {
-                *detectedRatioF = (((double)InputWidthF ) *  PixRatioNumF - 2*i) / ((double)InputHeightF *PixRatioDenF);
-                break;
-            }
+			if (PixelValueh.blue > Tolerencepx8_blue || PixelValueh.green > Tolerencepx8_green || PixelValueh.red > Tolerencepx8_red)
+			{
+				ratioVF = (((double)InputWidthF - 2 * k) *  PixRatioNumF ) / ((double)InputHeightF *PixRatioDenF);
+				k = halfWidthA - 1;
+				break;
+			}
+
         }
-        
     }
+    PF_FpLong layerRatio = (((double)InputWidthF) *  PixRatioNumF) / ((double)InputHeightF *PixRatioDenF); //ratio input from layer
+	if (ratioHF >layerRatio)
+	{
+		*detectedRatioF = ratioHF;
+
+	}
+    
+	else if (ratioVF <layerRatio &&
+			ratioVF >0.000 )
+	{
+		*detectedRatioF = ratioVF;
+	}
 
     else
     {
-        *detectedRatioF = (((double)InputWidthF ) *  PixRatioNumF) / ((double)InputHeightF *PixRatioDenF); //ratio input from layer
+		*detectedRatioF = layerRatio;
     }
 
 
