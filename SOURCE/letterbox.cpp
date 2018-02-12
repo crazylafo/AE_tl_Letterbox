@@ -529,6 +529,8 @@ GetRatioFromWorld (
     A_long halfHeightA = A_long (InputHeightF *0.5);
 
 	PF_FpLong ratioHF, ratioVF;
+    ratioHF =0;
+    ratioVF =0;
     
  
     for (A_long i =1; i< halfHeightA; i++)
@@ -542,7 +544,15 @@ GetRatioFromWorld (
             
 			if (PixelValue.blue > Tolerencepx8_blue || PixelValue.green > Tolerencepx8_green || PixelValue.red > Tolerencepx8_red)
 			{
-				ratioHF = (((double)InputWidthF) *  PixRatioNumF) / ((double)InputHeightF *PixRatioDenF - 2 * i);
+                if (i <5)
+                {
+                    ratioHF =0;
+                    
+                }
+                else
+                {
+                    ratioHF = (((double)InputWidthF) *  PixRatioNumF) / ((double)InputHeightF *PixRatioDenF - 2 * i);
+                }
 				i = halfHeightA - 1;
 				break;
 
@@ -551,8 +561,6 @@ GetRatioFromWorld (
         }
     }
     
-  
-
     for (A_long k  =1; k<halfWidthA; k++)
     {
         for (A_long l =1; l< A_long (InputHeightF); l++)
@@ -571,7 +579,7 @@ GetRatioFromWorld (
         }
     }
     PF_FpLong layerRatio = (((double)InputWidthF) *  PixRatioNumF) / ((double)InputHeightF *PixRatioDenF); //ratio input from layer
-	if (ratioHF >layerRatio)
+	if (ratioHF > layerRatio)
 	{
 		*detectedRatioF = ratioHF;
 
