@@ -139,19 +139,11 @@ typedef struct {
     PF_FpLong            x_offsetF;
     PF_FpLong            y_offsetF;
 
-    
-    PF_FpLong             layerscale_x;
-    PF_FpLong             layerscale_y;
-   PF_FpLong              layerscale_dflt_x;
-    PF_FpLong              layerscale_dflt_y;
-    PF_FpLong             positionXF;
-    PF_FpLong             positionYF;
-    AEGP_TwoDVal          scaleTD;
-    AEGP_TwoDVal          acPointTD;
-    PF_FpLong             compWidthF;
-    PF_FpLong             compHeightF;
-     PF_FpLong             compPixRatioF;
-    PF_FpLong              compRatioF;
+
+    A_long                 compWidthA;
+    A_long                 compHeightA;
+    PF_FpLong               compRatioF;
+
     
 } prerender_letP, *pre_render_letPP, **pre_render_letPH;
 
@@ -179,12 +171,6 @@ enum {
     LETB_FORCE_SCALE,
     END_TOPIC_GR3,
     
-    AEGP_GET_POSITION,
-    AEGP_GET_ANCHORPOINT,
-    AEGP_GET_SCALE,
-    
-    AEGP_GET_COMP_PIX_RATIO,
-    AEGP_GET_COMPSIZE,
 	LETB_NUM_PARAMS
 };
 
@@ -206,11 +192,7 @@ enum {
     LETB_SIZE_SOURCE_DISK_ID,
     LETB_FORCE_SCALE_DISK_ID,
     END_TOPIC_GR3_DISK_ID,
-    AEGP_GET_POSITION_DISK_ID,
-    AEGP_GET_ANCHORPOINT_DISK_ID,
-    AEGP_GET_SCALE_DISK_ID,
-    AEGP_GET_COMP_PIX_RATIO_DISK_ID,
-    AEGP_GET_COMPSIZE_DISK_ID,
+
 };
 
 extern "C" {
