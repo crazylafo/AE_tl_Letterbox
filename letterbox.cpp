@@ -711,25 +711,32 @@ PixelFuncVUYA_32f(
     outVUYA_32f = reinterpret_cast<PF_Pixel_VUYA_32f*>(outP);
     
     prerender_letP*	letP = reinterpret_cast<prerender_letP*>(refcon);
-    PF_Pixel_VUYA_32f *ColorYuv;
+    PF_Pixel_VUYA_32f ColorYuv;
+     PF_Pixel_VUYA_8u ColorYuv8;
     
     if (letP) {
         
-        ColorYuv = reinterpret_cast<PF_Pixel_VUYA_32f*>(&letP->Color32);
-
+        ColorYuv8.luma = A_u_char(  (0.257 * letP->Color.red) + (0.504 * letP->Color.green) + (0.098 * letP->Color.blue) + 16);
+        ColorYuv8.Pb = A_u_char(-(0.148 * letP->Color.red) - (0.291 * letP->Color.green) + (0.439 * letP->Color.blue) + 128);
+        ColorYuv8.Pr = A_u_char((0.439 * letP->Color.red) - (0.368 * letP->Color.green) - (0.071 * letP->Color.blue) + 128);
+        
+        ColorYuv.luma = A_u_short (ColorYuv8.luma);
+        ColorYuv.Pb =   A_u_short (ColorYuv8.Pb);
+        ColorYuv.Pr =   A_u_short (ColorYuv8.Pr);
+        
         if (letP->PoTransparentB == TRUE)
         {
-            outVUYA_32f->alpha   = A_u_short(PF_MAX_CHAN8*(1 - (CalculateBox(refcon, xL, yL))));
-            outVUYA_32f->luma =   ColorYuv->luma;
-            outVUYA_32f->Pb =     ColorYuv->Pb;
-            outVUYA_32f->Pr =     ColorYuv->Pr;
+            outVUYA_32f->alpha   =(1 - (CalculateBox(refcon, xL, yL)));
+            outVUYA_32f->luma =   ColorYuv.luma;
+            outVUYA_32f->Pb =     ColorYuv.Pb;
+            outVUYA_32f->Pr =     ColorYuv.Pr;
         }
         else
         {
             outVUYA_32f->alpha =    PF_MAX_CHAN8;
-            outVUYA_32f->luma = A_u_char(inVUYA_32f->luma    *   CalculateBox(refcon, xL, yL) + (ColorYuv->luma*(1- CalculateBox(refcon, xL, yL))));
-            outVUYA_32f->Pb = A_u_char  (inVUYA_32f->Pb   *   CalculateBox(refcon, xL, yL)+ ColorYuv->Pb*(1- CalculateBox(refcon, xL, yL)));
-            outVUYA_32f->Pr = A_u_char  (inVUYA_32f->Pr  *   CalculateBox(refcon, xL, yL) + ColorYuv->Pr*(1- CalculateBox(refcon, xL, yL)));
+            outVUYA_32f->luma = A_u_char(inVUYA_32f->luma    *   CalculateBox(refcon, xL, yL) + (ColorYuv.luma*(1- CalculateBox(refcon, xL, yL))));
+            outVUYA_32f->Pb = A_u_char  (inVUYA_32f->Pb   *   CalculateBox(refcon, xL, yL)+ ColorYuv.Pb*(1- CalculateBox(refcon, xL, yL)));
+            outVUYA_32f->Pr = A_u_char  (inVUYA_32f->Pr  *   CalculateBox(refcon, xL, yL) + ColorYuv.Pr*(1- CalculateBox(refcon, xL, yL)));
         }
     }
     return err;
