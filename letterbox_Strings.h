@@ -26,6 +26,9 @@ typedef enum {
     
     StrID_detect_Param_Name,
     StrID_Layer_detectName,
+    StrID_Layer_timeAnalysName,
+    StrID_Time_ModeChoices,	
+    StrID_Layer_colorAnalysName,
     StrID_CheckboxName,
     StrID_CheckboxCaption,
     

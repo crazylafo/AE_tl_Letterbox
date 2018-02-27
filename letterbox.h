@@ -68,6 +68,15 @@ typedef enum {
 } current_preset;
 
 
+typedef enum {
+    TIME_FRAME= 1,
+    TIME_LAYER,
+    TIME_SIZE = TIME_LAYER
+} time_mode;
+
+
+
+
 
 typedef struct {
     A_u_char	blue, green, red, alpha;
@@ -82,8 +91,10 @@ typedef struct {
 } PF_Pixel_BGRA_32f;
 
 typedef struct {
-    PF_FpShort	Pr, Pb, luma, alpha;
-} PF_Pixel_VUYA_32f;
+    A_u_short	Pr, Pb, luma, alpha;
+} PF_Pixel_VUYA_16u;
+
+
 
 
 typedef struct {
@@ -91,12 +102,6 @@ typedef struct {
     A_long                 compHeightA;
     AEGP_DownsampleFactor dsfP;
 } CompositionProp;
-
-typedef struct {
-    AEGP_ThreeDVal          positionTD;
-    AEGP_ThreeDVal          scaleTD;
-    AEGP_ThreeDVal          acPointTD;
-} LayerBasicProp;
 
 
 typedef struct {
@@ -159,7 +164,9 @@ enum {
     
     LETB_GR2,
     LETB_LAYER_ANALYS,
-    LETB_CHECKBOX,
+    LETB_TIME_ANALYS,
+    LETB_COLOR_ANALYS,
+    LETB_BTN_ANALYS,
     END_TOPIC_GR2,
     
     LETB_GR3,
@@ -181,6 +188,8 @@ enum {
     END_TOPIC_GR1_DISK_ID,
     TOPIC_GR2_DISK_ID,
     LETB_LAYER_ANALYS_DISK_ID,
+    LETB_TIME_ANALYS_DISK_ID,
+    LETB_COLOR_ANALYS_DISK_ID,
     LETB_DETECT_DISK_ID,
     END_TOPIC_GR2_DISK_ID,
     TOPIC_GR3_DISK_ID,

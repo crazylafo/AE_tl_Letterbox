@@ -82,7 +82,7 @@ GlobalSetup (
         (*pixelFormatSuite->ClearSupportedPixelFormats)(in_data->effect_ref);
         (*pixelFormatSuite->AddSupportedPixelFormat)(
                                                      in_data->effect_ref,
-                                                     PrPixelFormat_VUYA_4444_32f);
+                                                     PrPixelFormat_VUYA_4444_16u);
         (*pixelFormatSuite->AddSupportedPixelFormat)(
                                                      in_data->effect_ref,
                                                      PrPixelFormat_BGRA_4444_32f);
@@ -92,6 +92,7 @@ GlobalSetup (
         (*pixelFormatSuite->AddSupportedPixelFormat)(
                                                      in_data->effect_ref,
                                                      PrPixelFormat_VUYA_4444_8u);
+     
        
     }
 
@@ -234,7 +235,7 @@ ParamsSetup(
      AEFX_CLR_STRUCT(def);
     PF_END_TOPIC (END_TOPIC_GR1_DISK_ID);
     AEFX_CLR_STRUCT(def);
-    AEFX_CLR_STRUCT(def);
+
     
     PF_ADD_TOPICX (STR(StrID_detect_Param_Name),
                    0,
@@ -243,38 +244,40 @@ ParamsSetup(
     
     
     def.flags		|=	PF_ParamFlag_SUPERVISE |
-    PF_ParamFlag_CANNOT_TIME_VARY;
+                    PF_ParamFlag_CANNOT_TIME_VARY;
+    
     PF_ADD_LAYER (STR(StrID_Layer_detectName),
                   PF_LayerDefault_MYSELF,
                   LETB_LAYER_ANALYS_DISK_ID);
-     AEFX_CLR_STRUCT(def);
+    AEFX_CLR_STRUCT(def);
     
+    
+    
+    def.flags		=	PF_ParamFlag_SUPERVISE			|
+    PF_ParamFlag_CANNOT_TIME_VARY                       |
+    PF_ParamFlag_CANNOT_INTERP;
+    
+    PF_ADD_POPUP(		STR( StrID_Layer_timeAnalysName),
+                 TIME_SIZE,
+                 TIME_FRAME,
+                 STR(StrID_Time_ModeChoices),
+                 LETB_TIME_ANALYS_DISK_ID);
+    
+    AEFX_CLR_STRUCT(def);
     
 
-    def.flags		|=	PF_ParamFlag_SUPERVISE |
-    PF_ParamFlag_CANNOT_TIME_VARY;
+    def.flags		|=	PF_ParamFlag_SUPERVISE;
+    PF_ADD_COLOR(	STR( StrID_Layer_colorAnalysName),
+                 0,
+                 0,
+                 0,
+                 LETB_COLOR_ANALYS_DISK_ID);
+    
+     AEFX_CLR_STRUCT(def);
     
     def.ui_flags	= PF_PUI_STD_CONTROL_ONLY;
-    // IN AE the checkbox detect the ratio of the frame, but for know in premiere it gets the ratio of the layer size.
-    if (in_data->appl_id == 'PrMr')
-    {
-        PF_ADD_CHECKBOX("Input Ratio",
-                        "Get the ratio of the layer size",
-                        FALSE,
-                        0,
-                        LETB_DETECT_DISK_ID);
-        
-        
-    }
-    else
-    {
-        PF_ADD_CHECKBOX(STR(StrID_CheckboxName),
-                        STR(StrID_CheckboxCaption),
-                        FALSE,
-                        0,
-                        LETB_DETECT_DISK_ID);
-    }
-     AEFX_CLR_STRUCT(def);
+    PF_ADD_BUTTON(STR(StrID_CheckboxName), STR(StrID_CheckboxCaption), FALSE, PF_ParamFlag_SUPERVISE, LETB_DETECT_DISK_ID);
+    AEFX_CLR_STRUCT(def);
     
     
     PF_END_TOPIC (END_TOPIC_GR2_DISK_ID);
@@ -376,7 +379,8 @@ GetRatioFromWorld (
                    PF_InData		*in_data,
                    PF_EffectWorld  *detectWorldP,
                    PF_PixelFormat  pxformat,
-                   PF_FpLong		*detectedRatioF)
+                   PF_FpLong	   *detectedRatioF,
+                   PF_PixelFloat   analysColor)
 {
 
     PF_FpLong InputWidthF ,InputHeightF ,PixRatioNumF,PixRatioDenF;
@@ -393,9 +397,9 @@ GetRatioFromWorld (
     InputHeightF  *= scale_y;
 
 
-    PF_FpShort Tolerencepx8_blue = float (0.010);
-	PF_FpShort Tolerencepx8_green = float(0.010);
-	PF_FpShort Tolerencepx8_red = float(0.010);
+    PF_FpShort Tolerencepx_blue = analysColor.blue;
+	PF_FpShort Tolerencepx_green = analysColor.green;
+	PF_FpShort Tolerencepx_red = analysColor.red;
 
     
     A_long halfWidthA = A_long (InputWidthF*0.5);
@@ -415,7 +419,7 @@ GetRatioFromWorld (
             AEFX_CLR_STRUCT(PixelValue);
              GetPixelValue(detectWorldP, pxformat, j, i, &PixelValue);
             
-			if (PixelValue.blue > Tolerencepx8_blue || PixelValue.green > Tolerencepx8_green || PixelValue.red > Tolerencepx8_red)
+			if (PixelValue.blue > Tolerencepx_blue || PixelValue.green > Tolerencepx_green || PixelValue.red > Tolerencepx_red)
 			{
                 if (i <5)
                 {
@@ -442,7 +446,7 @@ GetRatioFromWorld (
             AEFX_CLR_STRUCT(PixelValueh);
             GetPixelValue (detectWorldP, pxformat, k, l, &PixelValueh);
 
-			if (PixelValueh.blue > Tolerencepx8_blue || PixelValueh.green > Tolerencepx8_green || PixelValueh.red > Tolerencepx8_red)
+			if (PixelValueh.blue > Tolerencepx_blue || PixelValueh.green > Tolerencepx_green || PixelValueh.red > Tolerencepx_red)
 			{
 				ratioVF = (((double)InputWidthF - 2 * k) *  PixRatioNumF ) / ((double)InputHeightF *PixRatioDenF);
 				k = halfWidthA - 1;
@@ -694,6 +698,7 @@ PixelFuncFloat(
 	return err;
 }
 //RENDER FUNCTIONS FOR PREMIERE
+/*
 static PF_Err
 PixelFuncVUYA_32f(
                   void			*refcon,
@@ -712,17 +717,14 @@ PixelFuncVUYA_32f(
     
     prerender_letP*	letP = reinterpret_cast<prerender_letP*>(refcon);
     PF_Pixel_VUYA_32f ColorYuv;
-     PF_Pixel_VUYA_8u ColorYuv8;
+
     
     if (letP) {
+
         
-        ColorYuv8.luma = A_u_char(  (0.257 * letP->Color.red) + (0.504 * letP->Color.green) + (0.098 * letP->Color.blue) + 16);
-        ColorYuv8.Pb = A_u_char(-(0.148 * letP->Color.red) - (0.291 * letP->Color.green) + (0.439 * letP->Color.blue) + 128);
-        ColorYuv8.Pr = A_u_char((0.439 * letP->Color.red) - (0.368 * letP->Color.green) - (0.071 * letP->Color.blue) + 128);
-        
-        ColorYuv.luma = A_u_short (ColorYuv8.luma);
-        ColorYuv.Pb =   A_u_short (ColorYuv8.Pb);
-        ColorYuv.Pr =   A_u_short (ColorYuv8.Pr);
+        ColorYuv.luma = PF_FpShort ((0.257 * letP->Color.red) + (0.504 * letP->Color.green) + (0.098 * letP->Color.blue))+16/219;
+        ColorYuv.Pb =   PF_FpShort (-(0.148 * letP->Color.red) - (0.291 * letP->Color.green) + (0.439 * letP->Color.blue) )+128/224;
+        ColorYuv.Pr =   PF_FpShort ((0.439 * letP->Color.red) - (0.368 * letP->Color.green) - (0.071 * letP->Color.blue) ) +128/224;
         
         if (letP->PoTransparentB == TRUE)
         {
@@ -733,14 +735,17 @@ PixelFuncVUYA_32f(
         }
         else
         {
-            outVUYA_32f->alpha =    PF_MAX_CHAN8;
-            outVUYA_32f->luma = A_u_char(inVUYA_32f->luma    *   CalculateBox(refcon, xL, yL) + (ColorYuv.luma*(1- CalculateBox(refcon, xL, yL))));
-            outVUYA_32f->Pb = A_u_char  (inVUYA_32f->Pb   *   CalculateBox(refcon, xL, yL)+ ColorYuv.Pb*(1- CalculateBox(refcon, xL, yL)));
-            outVUYA_32f->Pr = A_u_char  (inVUYA_32f->Pr  *   CalculateBox(refcon, xL, yL) + ColorYuv.Pr*(1- CalculateBox(refcon, xL, yL)));
+        
+            outVUYA_32f->alpha =   inVUYA_32f->alpha;
+           
+            outVUYA_32f->luma = inVUYA_32f->luma   *   CalculateBox(refcon, xL, yL)+ (ColorYuv.luma*(1- CalculateBox(refcon, xL, yL)));
+            outVUYA_32f->Pb = inVUYA_32f->Pb *      CalculateBox(refcon, xL, yL)+ (ColorYuv.Pb*(1- CalculateBox(refcon, xL, yL)));
+            outVUYA_32f->Pr = inVUYA_32f->Pr *       CalculateBox(refcon, xL, yL) + (ColorYuv.Pr*(1- CalculateBox(refcon, xL, yL)));
+
         }
     }
     return err;
-}
+}*/
 
 static PF_Err
 PixelFuncBGRA_32f(
@@ -774,7 +779,7 @@ PixelFuncBGRA_32f(
             {
             outBGRA_32fP->blue =    letP->Color.blue;
             outBGRA_32fP->green =    letP->Color.green;
-                outBGRA_32fP->red =  letP->Color.blue;
+            outBGRA_32fP->red =  letP->Color.blue;
             outBGRA_32fP->alpha =   (1-(CalculateBox(refcon, xL, yL)));
             }
         }
@@ -788,6 +793,54 @@ PixelFuncBGRA_32f(
     }
     return err;
 }
+static PF_Err
+PixelFuncVUYA_16u(
+                            void		*refcon,
+                            A_long		xL,
+                            A_long		yL,
+                            PF_Pixel16	*inP,
+                            PF_Pixel16	*outP)
+{
+    PF_Err			err = PF_Err_NONE;
+    
+    PF_Pixel_VUYA_16u *inVUYA_16uP, *outVUYA_16uP;
+    
+    inVUYA_16uP = reinterpret_cast<PF_Pixel_VUYA_16u*>(inP);
+    outVUYA_16uP = reinterpret_cast<PF_Pixel_VUYA_16u*>(outP);
+    
+    prerender_letP*	letP = reinterpret_cast<prerender_letP*>(refcon);
+    PF_Pixel_VUYA_8u ColorYuv;
+    PF_Pixel_VUYA_16u ColorYuv16;
+    
+    if (letP) {
+        
+        
+        ColorYuv.luma = A_u_char(  (0.257 * letP->Color.red) + (0.504 * letP->Color.green) + (0.098 * letP->Color.blue) + 16);
+        ColorYuv.Pb = A_u_char(-(0.148 * letP->Color.red) - (0.291 * letP->Color.green) + (0.439 * letP->Color.blue) + 128);
+        ColorYuv.Pr = A_u_char((0.439 * letP->Color.red) - (0.368 * letP->Color.green) - (0.071 * letP->Color.blue) + 128);
+        
+        ColorYuv16.luma = ColorYuv.luma* PF_MAX_CHAN16/PF_MAX_CHAN8;
+        ColorYuv16.Pb =   ColorYuv.Pb* PF_MAX_CHAN16/PF_MAX_CHAN8;
+        ColorYuv16.Pr =   ColorYuv.Pr* PF_MAX_CHAN16/PF_MAX_CHAN8;
+        
+        if (letP->PoTransparentB == TRUE)
+        {
+            outVUYA_16uP->alpha   = A_u_short(PF_MAX_CHAN16*(1 - (CalculateBox(refcon, xL, yL))));
+            outVUYA_16uP->luma =   ColorYuv16.luma;
+            outVUYA_16uP->Pb =     ColorYuv16.Pb;
+            outVUYA_16uP->Pr =     ColorYuv16.Pr;
+        }
+        else
+        {
+            outVUYA_16uP->alpha =    PF_MAX_CHAN8;
+            outVUYA_16uP->luma = A_u_short(inVUYA_16uP->luma    *   CalculateBox(refcon, xL, yL) + (ColorYuv16.luma*(1- CalculateBox(refcon, xL, yL))));
+            outVUYA_16uP->Pb = A_u_short  (inVUYA_16uP->Pb   *   CalculateBox(refcon, xL, yL)+ ColorYuv16.Pb*(1- CalculateBox(refcon, xL, yL)));
+            outVUYA_16uP->Pr = A_u_short (inVUYA_16uP->Pr  *   CalculateBox(refcon, xL, yL) + ColorYuv16.Pr*(1- CalculateBox(refcon, xL, yL)));
+        }
+    }
+    return err;
+}
+
 static PF_Err
 PixelFuncBGRA_8u(
                  void		*refcon,
@@ -868,7 +921,39 @@ PixelFuncVUYA_8u(
 }
 
 
-
+static PF_Err
+IterateDeep(
+             PF_InData			*in_data,
+             long				progress_base,
+             long				progress_final,
+             PF_EffectWorld		*src,
+             void				*refcon,
+             PF_Err(*pix_fn)(void *refcon, A_long x, A_long y, PF_Pixel16 *in, PF_Pixel16 *out),
+             PF_EffectWorld		*dst)
+{
+    PF_Err	err = PF_Err_NONE;
+    char	*localSrc, *localDst;
+    localSrc = reinterpret_cast<char*>(src->data);
+    localDst = reinterpret_cast<char*>(dst->data);
+    
+    for (int y = progress_base; y < progress_final; y++)
+    {
+        for (int x = 0; x < in_data->width; x++)
+        {
+            pix_fn(refcon,
+                   static_cast<A_long> (x),
+                   static_cast<A_long> (y),
+                   reinterpret_cast<PF_Pixel16*>(localSrc),
+                   reinterpret_cast<PF_Pixel16*>(localDst));
+            localSrc += 16;
+            localDst += 16;
+        }
+        localSrc += (src->rowbytes - in_data->width * 16);
+        localDst += (dst->rowbytes - in_data->width * 16);
+    }
+    
+    return err;
+}
 
 
 
@@ -921,7 +1006,7 @@ MakeParamCopy(
     copy[LETB_MODE]             = *actual[LETB_MODE];
     copy[LETB_PRESET]			= *actual[LETB_PRESET];
     copy[LETB_SLIDER]			= *actual[LETB_SLIDER];
-    copy[LETB_CHECKBOX]         = *actual[LETB_CHECKBOX];
+    copy[LETB_BTN_ANALYS]         = *actual[LETB_BTN_ANALYS];
     copy[LETB_TRSP]             = *actual[LETB_TRSP];
     copy[LETB_COLOR]            = *actual[LETB_COLOR];
     copy[LETB_GR1]              = *actual[LETB_GR1];
@@ -961,15 +1046,12 @@ UserChangedParam(
         
     }
     
-    if (which_hitP->param_index == LETB_CHECKBOX)
+    if (which_hitP->param_index == LETB_BTN_ANALYS)
     {
         // If checkbox is checked, change slider value to the layer ratio.
         AEGP_SuiteHandler		suites(in_data->pica_basicP);
         
         
-        
-        if (params[LETB_CHECKBOX]->u.bd.value == TRUE)
-        {
             params[LETB_MODE]->u.pd.value = MODE_ADVANCED;
             params[LETB_MODE]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
             ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
@@ -985,6 +1067,20 @@ UserChangedParam(
                
 				if (!err) 
 				{
+                    //GET COLOR LIMIT DEFINED BY USER
+                    PF_ParamDef param_color_analys;
+                    AEFX_CLR_STRUCT(param_color_analys);
+                    ERR(PF_CHECKOUT_PARAM(	in_data,
+                                          LETB_COLOR_ANALYS,
+                                          in_data->current_time,
+                                          in_data->time_step,
+                                          in_data->time_scale,
+                                          &param_color_analys));
+                    
+                    PF_PixelFloat analysColor;
+                    ERR(suites.ColorParamSuite1()->PF_GetFloatingPointColorFromColorDef(in_data->effect_ref, &param_color_analys, &analysColor));
+                    
+                    // METHOD CURRENT FRAME OR WHOLE LAYER
 					PF_ParamDef paramInput;
 					AEFX_CLR_STRUCT(paramInput);
                     AEFX_CLR_STRUCT(scanWorldP);
@@ -1016,12 +1112,14 @@ UserChangedParam(
                     {
                         detectFormat = PF_PixelFormat_ARGB128;
                     }
-                 	GetRatioFromWorld (in_data, scanWorldP, detectFormat,&scanlayerRatioF);
+                 	GetRatioFromWorld (in_data, scanWorldP, detectFormat,&scanlayerRatioF,analysColor);
+                    
+                    ERR2(PF_CHECKIN_PARAM(in_data, &param_color_analys));
                     ERR2(PF_CHECKIN_PARAM(in_data, &paramInput));
                 }
                 
             }
-            else // FOR KNOW CHEAT AND DETECT THE LAYER RATIO
+            else // PREMIERE : FOR KNOW CHEAT AND DETECT THE LAYER RATIO
             {
                 PF_FpLong InputWidthF , InputHeightF , PixRatioNumF, PixRatioDenF;
                 InputWidthF  = in_data->width;
@@ -1041,13 +1139,13 @@ UserChangedParam(
             params[LETB_SLIDER]->u.fs_d.value= scanlayerRatioF;
             params[LETB_SLIDER]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
             
-            params[LETB_CHECKBOX]->u.bd.value = FALSE;
+            params[LETB_BTN_ANALYS]->u.bd.value = FALSE;
            
             ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
-                                                            LETB_CHECKBOX,
-                                                            params[LETB_CHECKBOX]));
+                                                            LETB_BTN_ANALYS,
+                                                            params[LETB_BTN_ANALYS]));
         }
-    }
+
     return err;
 }
 
@@ -1224,7 +1322,7 @@ UpdateParameterUI(
             }
             else
             {
-                // 	Since we're in advanced mode, show the advanced-only params and hide the preset param
+                
                 
                 if (!err) {
                     param_copy[LETB_PRESET].ui_flags |=	PF_PUI_INVISIBLE;
@@ -1245,25 +1343,7 @@ UpdateParameterUI(
                 }
 
             }
-            //HIDE THOSE PARAM ON ADOBE PREMIERE TOPIC_GR3_DISK_ID   LETB_SIZE_SOURCE_DISK_ID)   LETB_FORCE_SCALE_DISK_ID
-           
-          
-            
-          
-            if (!err)
-                {
-                    param_copy[LETB_GR3].ui_flags |=	PF_PUI_INVISIBLE;
-                    ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
-                                                                    LETB_GR3,
-                                                                    &param_copy[LETB_GR3]));
-                }
-            if (!err)
-            {
-                param_copy[LETB_SIZE_SOURCE].ui_flags |=	PF_PUI_INVISIBLE;
-                ERR(suites.ParamUtilsSuite3()->PF_UpdateParamUI(in_data->effect_ref,
-                                                                LETB_SIZE_SOURCE,
-                                                                &param_copy[LETB_SIZE_SOURCE]));
-            }
+
 
           
 
@@ -1374,8 +1454,9 @@ Render(	PF_InData		*in_data,
     
 
     prerender_letP		letP;
-    PF_LayerDef		 *posOutput = output;
-
+   
+    
+    
     letP.in_data = *in_data;
     letP.samp_pb.src = inputP;
     
@@ -1414,22 +1495,7 @@ Render(	PF_InData		*in_data,
             letP.userRatioF = params[LETB_SLIDER]->u.fs_d.value;
         }
         
-        //POSITION PART
-        PF_FpLong scaleFactor;
-        scaleFactor = params[LETB_RESIZE]->u.fs_d.value/100;
-
-        PF_Pixel transparent_black = {0, 0, 0, 0};
-        ERR(PF_FILL(&transparent_black, &posOutput->extent_hint, posOutput));
-        PF_CompositeMode composite_mode;
-        AEFX_CLR_STRUCT(composite_mode);
-        PF_FloatMatrix float_matrix;
-        AEFX_CLR_STRUCT(float_matrix.mat);
-        AEFX_CLR_STRUCT(float_matrix.mat);
-        float_matrix.mat[2][2]  = 1;//identity
-        float_matrix.mat[2][0] =  FIX2INT(params[LETB_CENTER]->u.td.x_value) - 0.5* in_data->width* scaleFactor; // This is the x translation
-        float_matrix.mat[2][1] =  FIX2INT(params[LETB_CENTER]->u.td.y_value) - 0.5* in_data->height* scaleFactor; // This is the y translation
-        float_matrix.mat[0][0] = scaleFactor; //scale matrix
-        float_matrix.mat[1][1] = scaleFactor; //scale matrix
+     
         
         // Get the Premiere pixel format suite
         AEFX_SuiteScoper<PF_PixelFormatSuite1> pixelFormatSuite =
@@ -1449,6 +1515,87 @@ Render(	PF_InData		*in_data,
                                             out_data);
         
         
+        //TRANSFORM POSITION &&SCALE WORLD
+        PF_FpLong scaleFactor;
+        scaleFactor = params[LETB_RESIZE]->u.fs_d.value/100;
+        
+        PF_LayerDef		 posOutput;
+        AEFX_CLR_STRUCT(posOutput);
+        posOutput = *output;
+        
+        PF_Pixel fill_trsp = {0,0,0,0};
+        ERR(PF_FILL(&fill_trsp, &posOutput.extent_hint, &posOutput));
+        PF_CompositeMode composite_mode;
+        AEFX_CLR_STRUCT(composite_mode);
+        PF_FloatMatrix float_matrix;
+        AEFX_CLR_STRUCT(float_matrix.mat);
+        float_matrix.mat[2][2]  = 1;//identity
+        float_matrix.mat[2][0] =  FIX2INT(params[LETB_CENTER]->u.td.x_value) - 0.5* in_data->width* scaleFactor; // This is the x translation
+        float_matrix.mat[2][1] =  FIX2INT(params[LETB_CENTER]->u.td.y_value) - 0.5* in_data->height* scaleFactor; // This is the y translation
+        float_matrix.mat[0][0] =  scaleFactor; //scale matrix
+        float_matrix.mat[1][1] =  scaleFactor; //scale matrix
+        
+        if (destinationPixelFormat == PrPixelFormat_BGRA_4444_8u ||destinationPixelFormat ==PrPixelFormat_VUYA_4444_8u)
+        {
+            AEFX_CLR_STRUCT(composite_mode);
+            composite_mode.opacity = PF_MAX_CHAN8;
+            composite_mode.xfer = PF_Xfer_COPY;
+            
+            
+            ERR(in_data->utils->transform_world(in_data->effect_ref,
+                                                in_data->quality,
+                                                PF_MF_Alpha_STRAIGHT,
+                                                in_data->field,
+                                                inputP,
+                                                &composite_mode,
+                                                NULL,
+                                                &float_matrix,
+                                                1,
+                                                TRUE,
+                                                &posOutput.extent_hint,
+                                                &posOutput));
+        }
+        else if (destinationPixelFormat == PrPixelFormat_BGRA_4444_32f)
+        {
+            AEFX_CLR_STRUCT(composite_mode);
+            composite_mode.opacity = 1;
+            composite_mode.xfer = PF_Xfer_COPY;
+            
+            
+            ERR(in_data->utils->transform_world(in_data->effect_ref,
+                                                in_data->quality,
+                                                PF_MF_Alpha_STRAIGHT,
+                                                in_data->field,
+                                                inputP,
+                                                &composite_mode,
+                                                NULL,
+                                                &float_matrix,
+                                                1,
+                                                TRUE,
+                                                &posOutput.extent_hint,
+                                                &posOutput));
+        }
+        else
+        {
+            AEFX_CLR_STRUCT(composite_mode);
+            composite_mode.opacity = PF_MAX_CHAN16;
+            composite_mode.opacitySu =PF_MAX_CHAN16;
+            composite_mode.xfer = PF_Xfer_COPY;
+            ERR(in_data->utils->transform_world(in_data->effect_ref,
+                                                in_data->quality,
+                                                PF_MF_Alpha_STRAIGHT,
+                                                in_data->field,
+                                                inputP,
+                                                &composite_mode,
+                                                NULL,
+                                                &float_matrix,
+                                                1,
+                                                TRUE,
+                                                &posOutput.extent_hint,
+                                                &posOutput));
+        }
+        
+        
         
         
         switch (destinationPixelFormat)
@@ -1456,29 +1603,10 @@ Render(	PF_InData		*in_data,
                 
             case PrPixelFormat_BGRA_4444_8u:
                 
-
-                AEFX_CLR_STRUCT(composite_mode);
-                composite_mode.opacity = 255;
-                composite_mode.xfer = PF_Xfer_COPY;
-                
-
-                ERR(in_data->utils->transform_world(in_data->effect_ref,
-                                                    in_data->quality,
-                                                    PF_MF_Alpha_STRAIGHT,
-                                                    in_data->field,
-                                                    inputP,
-                                                    &composite_mode,
-                                                    NULL,
-                                                    &float_matrix,
-                                                    1,
-                                                    TRUE,
-                                                    &posOutput->extent_hint,
-                                                    posOutput));
-                
                 iterate8Suite->iterate(in_data,
                                        0,
                                        (output->extent_hint.bottom - output->extent_hint.top),
-                                      posOutput,
+                                      &posOutput,
                                        NULL,
                                        (void*)&letP,
                                        PixelFuncBGRA_8u,
@@ -1489,26 +1617,10 @@ Render(	PF_InData		*in_data,
             case PrPixelFormat_VUYA_4444_8u:
                 
 
-                AEFX_CLR_STRUCT(composite_mode);
-                composite_mode.opacity = 255;
-                composite_mode.xfer = PF_Xfer_COPY;
-
-                ERR(in_data->utils->transform_world(in_data->effect_ref,
-                                                    in_data->quality,
-                                                    PF_MF_Alpha_STRAIGHT,
-                                                    in_data->field,
-                                                    inputP,
-                                                    &composite_mode,
-                                                    NULL,
-                                                    &float_matrix,
-                                                    1,
-                                                    TRUE,
-                                                    &posOutput->extent_hint,
-                                                    posOutput));
                 iterate8Suite->iterate(in_data,
                                        0,
                                        (output->extent_hint.bottom - output->extent_hint.top),
-                                       posOutput,
+                                       &posOutput,
                                        NULL,
                                        (void*)&letP,
                                        PixelFuncVUYA_8u,
@@ -1517,64 +1629,25 @@ Render(	PF_InData		*in_data,
                 break;
                 
             case PrPixelFormat_BGRA_4444_32f:
-                
-                AEFX_CLR_STRUCT(composite_mode);
-                composite_mode.opacity = 1;
-                composite_mode.xfer = PF_Xfer_COPY;
-                
-                
-                ERR(in_data->utils->transform_world(in_data->effect_ref,
-                                                    in_data->quality,
-                                                    PF_MF_Alpha_STRAIGHT,
-                                                    in_data->field,
-                                                    inputP,
-                                                    &composite_mode,
-                                                    NULL,
-                                                    &float_matrix,
-                                                    1,
-                                                    TRUE,
-                                                    &posOutput->extent_hint,
-                                                    posOutput));
-                
-                // Premiere doesn't support IterateFloatSuite1, so we've rolled our own
-                IterateFloat(in_data,
-                             0,                                                                     // progress base
-                             (output->extent_hint.bottom - output->extent_hint.top),                // progress final
-                             posOutput,
-                             (void*)&letP,                                                        // refcon - your custom data pointer
-                             PixelFuncBGRA_32f,                                                     // pixel function pointer
-                             output);
-                
-                break;
-            case PrPixelFormat_VUYA_4444_32f:
-                
-                AEFX_CLR_STRUCT(composite_mode);
-                composite_mode.opacity = 1;
-                composite_mode.xfer = PF_Xfer_COPY;
-                
-                
-                ERR(in_data->utils->transform_world(in_data->effect_ref,
-                                                    in_data->quality,
-                                                    PF_MF_Alpha_STRAIGHT,
-                                                    in_data->field,
-                                                    inputP,
-                                                    &composite_mode,
-                                                    NULL,
-                                                    &float_matrix,
-                                                    1,
-                                                    TRUE,
-                                                    &posOutput->extent_hint,
-                                                    posOutput));
-                
                 // Premiere doesn't support IterateFloatSuite1, so we've rolled our own
                 IterateFloat(in_data,
                              0,
                              (output->extent_hint.bottom - output->extent_hint.top),
-                             posOutput,
+                             &posOutput,
                              (void*)&letP,
-                             PixelFuncVUYA_32f,
+                             PixelFuncBGRA_32f,
                              output);
                 
+                break;
+            case PrPixelFormat_VUYA_4444_16u:
+                //float YUV has problem with matrix operation so cheat and use 16bits
+                IterateDeep(in_data,
+                                        0,
+                                        (output->extent_hint.bottom - output->extent_hint.top),
+                                        &posOutput,
+                                        (void*)&letP,
+                                        PixelFuncVUYA_16u,
+                                        output);
                 break;
             
 

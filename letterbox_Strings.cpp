@@ -40,19 +40,23 @@ TableString		g_strs[StrID_NUMTYPES] = {
 	
     
 
-    StrID_TrspName,             "Transparent",
-    StrID_TrspDescription,      "Generate on a transparent",
+    StrID_TrspName,                 "Transparent",
+    StrID_TrspDescription,          "Generate on a transparent",
     
-    StrID_ColorName,			"Fill scopes",
+    StrID_ColorName,                "Fill scopes",
     
-    StrID_sample_Param_Name,    "Transform Content",
-    StrID_PointName,			"Center",
-    StrID_SliderResizeName,     "Resize",
+    StrID_sample_Param_Name,        "Transform Content",
+    StrID_PointName,                "Center",
+    StrID_SliderResizeName,         "Resize",
     
-    StrID_detect_Param_Name,    "Detection",
-    StrID_Layer_detectName,     "Layer Source",
-    StrID_CheckboxName,			"Detect Layer Ratio",
-    StrID_CheckboxCaption,		"Try to detect the black scopes",
+    StrID_detect_Param_Name,        "Detection",
+    StrID_Layer_detectName,         "Dayer Source",
+    StrID_Layer_timeAnalysName,     "Frame to Analys",
+    StrID_Time_ModeChoices,			"Current Frame|"
+                                    "Whole layer",
+    StrID_Layer_colorAnalysName,    "Color Limit",
+    StrID_CheckboxName,             "Detect Layer Ratio",
+    StrID_CheckboxCaption,          "Try to detect the black scopes",
     
     StrID_settings_Param_Name,   "Settings",
     StrID_SizeSourceName,		"Source Size",
