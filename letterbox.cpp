@@ -55,6 +55,7 @@ GlobalSetup (
 	out_data->out_flags		=	PF_OutFlag_PIX_INDEPENDENT 			|
 								PF_OutFlag_SEND_UPDATE_PARAMS_UI	|
 								PF_OutFlag_USE_OUTPUT_EXTENT		|
+                                PF_OutFlag_WIDE_TIME_INPUT          |
                                 PF_OutFlag_DEEP_COLOR_AWARE;
 
 
@@ -1030,6 +1031,7 @@ UserChangedParam(
 {
     PF_Err				err					= PF_Err_NONE,
     err2					= PF_Err_NONE;
+     my_global_dataP		globP				= reinterpret_cast<my_global_dataP>(DH(out_data->global_data));
     
     if (which_hitP->param_index == LETB_MODE) //when switching from preset to advanced mode : the ratio value is kept.
     {
@@ -1080,20 +1082,7 @@ UserChangedParam(
                     PF_PixelFloat analysColor;
                     ERR(suites.ColorParamSuite1()->PF_GetFloatingPointColorFromColorDef(in_data->effect_ref, &param_color_analys, &analysColor));
                     
-                    // METHOD CURRENT FRAME OR WHOLE LAYER
-					PF_ParamDef paramInput;
-					AEFX_CLR_STRUCT(paramInput);
-                    AEFX_CLR_STRUCT(scanWorldP);
-					ERR(PF_CHECKOUT_PARAM(	in_data,
-										  LETB_LAYER_ANALYS,
-										  in_data->current_time,
-										  in_data->time_step,
-										  in_data->time_scale,
-										  &paramInput));
-					scanWorldP = &paramInput.u.ld;
-					
-
-					// temporary problem with the offitial getpixelformat in windows so cheat with this conditions group.
+                    // temporary problem with the offitial getpixelformat in windows so cheat with this conditions group.
                     AEGP_ProjectH projH;
                     AEGP_ProjBitDepth bit_depthP;
                     ERR(suites.ProjSuite5()->AEGP_GetProjectByIndex(0, &projH));
@@ -1112,10 +1101,82 @@ UserChangedParam(
                     {
                         detectFormat = PF_PixelFormat_ARGB128;
                     }
-                 	GetRatioFromWorld (in_data, scanWorldP, detectFormat,&scanlayerRatioF,analysColor);
                     
-                    ERR2(PF_CHECKIN_PARAM(in_data, &param_color_analys));
-                    ERR2(PF_CHECKIN_PARAM(in_data, &paramInput));
+                    // METHOD CURRENT FRAME OR WHOLE LAYER
+                    PF_ParamDef method_analys;
+                    AEFX_CLR_STRUCT(method_analys);
+                    ERR(PF_CHECKOUT_PARAM(	in_data,
+                                          LETB_TIME_ANALYS,
+                                          in_data->current_time,
+                                          in_data->time_step,
+                                          in_data->time_scale,
+                                          &method_analys));
+                    PF_ParamDef paramInput;
+                    if (method_analys.u.pd.value ==TIME_LAYER)
+                    {
+                        AEGP_LayerH layerH;
+                        A_Time    durationPT;
+                        AEGP_EffectRefH  effectPH;
+                        AEGP_StreamRefH    streamPH;
+                        AEGP_StreamValue2   valueP;
+                        AEGP_CompH     compPH;
+                        const A_Time        analystime = {0,100};
+                        
+            
+                        ERR(suites.PFInterfaceSuite1()->AEGP_GetNewEffectForEffect(globP->my_id,in_data->effect_ref,&effectPH));
+                        ERR(suites.StreamSuite4()->AEGP_GetNewEffectStreamByIndex(globP->my_id, effectPH, LETB_LAYER_ANALYS, &streamPH));
+                        ERR(suites.StreamSuite4()->AEGP_GetNewStreamValue(globP->my_id,streamPH, AEGP_LTimeMode_LayerTime, &analystime , NULL, &valueP));
+                        ERR(suites.LayerSuite8()->AEGP_GetLayerParentComp( layerH,  &compPH));
+                        ERR(suites.LayerSuite8()->AEGP_GetLayerFromLayerID(compPH, valueP.val.layer_id, &layerH));
+                            
+                        ERR(suites.LayerSuite8()->AEGP_GetLayerDuration(layerH,AEGP_LTimeMode_LayerTime, &durationPT));
+                       
+                        scanlayerRatioF =0;
+                        
+                        for (A_long i =0; i<durationPT.value;i++)
+                        {
+                            err = PF_PROGRESS(in_data, i, durationPT.value);
+                            
+                            AEFX_CLR_STRUCT(paramInput);
+                            AEFX_CLR_STRUCT(scanWorldP);
+                            ERR(PF_CHECKOUT_PARAM(in_data,
+                                                  LETB_LAYER_ANALYS,
+                                                  i,
+                                                  in_data->time_step,
+                                                  in_data->time_scale,
+                                                  &paramInput));
+                            /*
+                            scanWorldP = &paramInput.u.ld;
+                            
+                            PF_FpLong tempLayer;
+                            AEFX_CLR_STRUCT(tempLayer);
+                            GetRatioFromWorld (in_data, scanWorldP, detectFormat, &tempLayer,analysColor);
+                            if (tempLayer >scanlayerRatioF)
+                            {
+                                scanlayerRatioF = tempLayer;
+                            }*/
+                            ERR2(PF_CHECKIN_PARAM(in_data, &paramInput));
+                        }
+                        ERR(suites.StreamSuite4()->AEGP_DisposeStream(streamPH));
+                    }
+                    else
+                    {
+                        
+                        AEFX_CLR_STRUCT(paramInput);
+                        AEFX_CLR_STRUCT(scanWorldP);
+                        ERR(PF_CHECKOUT_PARAM(	in_data,
+                                              LETB_LAYER_ANALYS,
+                                              in_data->current_time,
+                                              in_data->time_step,
+                                              in_data->time_scale,
+                                              &paramInput));
+                        
+                        scanWorldP = &paramInput.u.ld;
+                        GetRatioFromWorld (in_data, scanWorldP, detectFormat,&scanlayerRatioF,analysColor);
+                        ERR2(PF_CHECKIN_PARAM(in_data, &paramInput));
+                        
+                    }
+                     ERR2(PF_CHECKIN_PARAM(in_data, &param_color_analys));
                 }
                 
             }
@@ -1958,6 +2019,11 @@ SmartRender(
                 letP->letoffyF =  (PF_FpLong (letP->compHeightF- letP->layerHeightF));
                 letP->InputWidthF =  PF_FpLong (letP->compWidthF);
                 letP->InputHeightF = PF_FpLong (letP->compHeightF);
+                
+                /*Given a layer handle and time, returns the layer-to-world transformation matrix.
+                AEGP_GetLayerToWorldXform(
+                                          AEGP_LayerH const A_Time A_Matrix4
+                                          aegp_layerH,  *comp_timeP,  *transform);*/
 
             }
             else
