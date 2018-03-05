@@ -65,7 +65,8 @@ GlobalSetup (
 								PF_OutFlag2_FLOAT_COLOR_AWARE					|
 								PF_OutFlag2_DOESNT_NEED_EMPTY_PIXELS			|
                                 PF_OutFlag2_I_USE_COLORSPACE_ENUMERATION        |
-								PF_OutFlag2_I_MIX_GUID_DEPENDENCIES;
+								PF_OutFlag2_I_MIX_GUID_DEPENDENCIES|
+                                PF_OutFlag2_AUTOMATIC_WIDE_TIME_INPUT;
     
     
     
@@ -1114,49 +1115,63 @@ UserChangedParam(
                     PF_ParamDef paramInput;
                     if (method_analys.u.pd.value ==TIME_LAYER)
                     {
-                        AEGP_LayerH layerH;
-                        A_Time    durationPT;
+                        AEGP_LayerH curLayerH, targetLayerH;
+                        A_Time    durationPT, offsetPT;
                         AEGP_EffectRefH  effectPH;
                         AEGP_StreamRefH    streamPH;
                         AEGP_StreamValue2   valueP;
                         AEGP_CompH     compPH;
+                        A_FpLong        fpsPF;
                         const A_Time        analystime = {0,100};
                         
-            
+                        //return current layer and current layer Comp
+                        ERR(suites.PFInterfaceSuite1()->AEGP_GetEffectLayer(in_data->effect_ref, &curLayerH));
+                        ERR(suites.LayerSuite8()->AEGP_GetLayerParentComp(curLayerH, &compPH));
+                        ERR(suites.CompSuite11()->AEGP_GetCompFramerate(compPH, &fpsPF));
+
                         ERR(suites.PFInterfaceSuite1()->AEGP_GetNewEffectForEffect(globP->my_id,in_data->effect_ref,&effectPH));
                         ERR(suites.StreamSuite4()->AEGP_GetNewEffectStreamByIndex(globP->my_id, effectPH, LETB_LAYER_ANALYS, &streamPH));
                         ERR(suites.StreamSuite4()->AEGP_GetNewStreamValue(globP->my_id,streamPH, AEGP_LTimeMode_LayerTime, &analystime , NULL, &valueP));
-                        ERR(suites.LayerSuite8()->AEGP_GetLayerParentComp( layerH,  &compPH));
-                        ERR(suites.LayerSuite8()->AEGP_GetLayerFromLayerID(compPH, valueP.val.layer_id, &layerH));
-                            
-                        ERR(suites.LayerSuite8()->AEGP_GetLayerDuration(layerH,AEGP_LTimeMode_LayerTime, &durationPT));
+
+                        ERR(suites.LayerSuite8()->AEGP_GetLayerFromLayerID(compPH, valueP.val.layer_id, &targetLayerH)); //return the targeted layer
+                        ERR(suites.LayerSuite8()->AEGP_GetLayerOffset(targetLayerH, &offsetPT));
+                        ERR(suites.LayerSuite8()->AEGP_GetLayerDuration(targetLayerH,AEGP_LTimeMode_CompTime, &durationPT)); // return the duration of the targeted layer
+
                        
                         scanlayerRatioF =0;
+                        A_long frameInpointA, durationFramesA, totalfA;
+                        frameInpointA = A_long (PF_FpLong(offsetPT.value/offsetPT.scale)*fpsPF);
+                        durationFramesA= A_long (PF_FpLong(durationPT.value/durationPT.scale)*fpsPF);
+                        totalfA = frameInpointA +durationFramesA;
                         
-                        for (A_long i =0; i<durationPT.value;i++)
+                        for (A_long i =frameInpointA; i< totalfA; i++)
                         {
-                            err = PF_PROGRESS(in_data, i, durationPT.value);
-                            
+                           if ((i) && (err = (PF_PROGRESS(in_data, i, totalfA))))
+                           {
+                               return err;
+                           }
                             AEFX_CLR_STRUCT(paramInput);
                             AEFX_CLR_STRUCT(scanWorldP);
+                            
                             ERR(PF_CHECKOUT_PARAM(in_data,
                                                   LETB_LAYER_ANALYS,
-                                                  i,
+                                                  (i*in_data->time_step),
                                                   in_data->time_step,
-                                                  in_data->time_scale,
+                                                  durationPT.scale,
                                                   &paramInput));
-                            /*
+                           
                             scanWorldP = &paramInput.u.ld;
                             
-                            PF_FpLong tempLayer;
-                            AEFX_CLR_STRUCT(tempLayer);
-                            GetRatioFromWorld (in_data, scanWorldP, detectFormat, &tempLayer,analysColor);
-                            if (tempLayer >scanlayerRatioF)
+                            PF_FpLong tempLayerRatio;
+                            AEFX_CLR_STRUCT(tempLayerRatio);
+                            GetRatioFromWorld (in_data, scanWorldP, detectFormat, &tempLayerRatio,analysColor);
+                            if (tempLayerRatio >scanlayerRatioF)
                             {
-                                scanlayerRatioF = tempLayer;
-                            }*/
+                                scanlayerRatioF = tempLayerRatio;
+                            }
                             ERR2(PF_CHECKIN_PARAM(in_data, &paramInput));
                         }
+                        ERR(suites.EffectSuite3()->AEGP_DisposeEffect(effectPH));
                         ERR(suites.StreamSuite4()->AEGP_DisposeStream(streamPH));
                     }
                     else
@@ -2094,6 +2109,25 @@ SmartRender(
 	return err;
 }
 
+static PF_Err
+RespondtoAEGP (
+               PF_InData		*in_data,
+               PF_OutData		*out_data,
+               PF_ParamDef		*params[],
+               PF_LayerDef		*output,
+               void*			extraP)
+{
+    PF_Err			err = PF_Err_NONE;
+    
+    AEGP_SuiteHandler suites(in_data->pica_basicP);
+    
+    suites.ANSICallbacksSuite1()->sprintf(	out_data->return_msg,
+                                          "%s",	
+                                          reinterpret_cast<A_char*>(extraP));
+    
+    return err;
+}
+
 
 
 
@@ -2165,6 +2199,14 @@ EntryPointFunc(
                                        reinterpret_cast<const PF_UserChangedParamExtra *>(extra));
                                        
 				break;
+                
+            case PF_Cmd_COMPLETELY_GENERAL:
+                err = RespondtoAEGP(in_data,
+                                    out_data,
+                                    params,
+                                    output, 
+                                    extra);
+       
 
 			case PF_Cmd_UPDATE_PARAMS_UI:
 				err = UpdateParameterUI(	in_data,
@@ -2174,6 +2216,8 @@ EntryPointFunc(
 
 			default:
 				break;
+                
+            
 		}
 	}
 	catch(PF_Err &thrown_err){
