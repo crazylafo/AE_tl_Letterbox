@@ -2255,6 +2255,9 @@ EntryPointFunc(
                                     params,
                                     output, 
                                     extra);
+		break;
+				  
+				
        
 
 			case PF_Cmd_UPDATE_PARAMS_UI:
