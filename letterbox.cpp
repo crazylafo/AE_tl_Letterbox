@@ -238,7 +238,8 @@ ParamsSetup(
     PF_END_TOPIC (END_TOPIC_GR1_DISK_ID);
     AEFX_CLR_STRUCT(def);
 
-    
+    if (in_data->appl_id != 'PrMr')
+    {
     PF_ADD_TOPICX (STR(StrID_detect_Param_Name),
                    0,
                    TOPIC_GR2_DISK_ID);
@@ -308,13 +309,14 @@ ParamsSetup(
     PF_END_TOPIC (END_TOPIC_GR3_DISK_ID);
     AEFX_CLR_STRUCT(def);
     
-      
-    out_data->num_params = LETB_NUM_PARAMS;
-    
-
-    
-    
-
+        out_data->num_params = LETB_NUM_PARAMS;
+        
+    }
+    else
+    {
+        out_data->num_params = LETB_NUM_PARAMS -9; // NO TWO TOPICS FOR PREMIERE
+        
+    }
 	return err;
 }
 
@@ -1019,6 +1021,7 @@ IterateFloat(
 
 static PF_Err
 MakeParamCopy(
+              PF_InData     *in_data,
               PF_ParamDef *actual[],	/* >> */
               PF_ParamDef copy[])		/* << */
 {
@@ -1029,14 +1032,19 @@ MakeParamCopy(
     copy[LETB_MODE]             = *actual[LETB_MODE];
     copy[LETB_PRESET]			= *actual[LETB_PRESET];
     copy[LETB_SLIDER]			= *actual[LETB_SLIDER];
-    copy[LETB_BTN_ANALYS]         = *actual[LETB_BTN_ANALYS];
     copy[LETB_TRSP]             = *actual[LETB_TRSP];
     copy[LETB_COLOR]            = *actual[LETB_COLOR];
     copy[LETB_GR1]              = *actual[LETB_GR1];
     copy[LETB_CENTER]           = *actual[LETB_CENTER];
     copy[LETB_RESIZE]           = *actual[LETB_RESIZE];
-    copy[LETB_GR2]              = *actual[LETB_GR2];
-    copy[LETB_SIZE_SOURCE]       = *actual[LETB_SIZE_SOURCE];
+    if (in_data->appl_id != 'PrMr')
+    {
+        copy[LETB_BTN_ANALYS]         = *actual[LETB_BTN_ANALYS];
+        copy[LETB_GR2]              = *actual[LETB_GR2];
+        copy[LETB_SIZE_SOURCE]       = *actual[LETB_SIZE_SOURCE];
+        
+    }
+  
     return PF_Err_NONE;
     
 }
@@ -1230,23 +1238,7 @@ UserChangedParam(
                 }
                 
             }
-            else // PREMIERE : FOR KNOW CHEAT AND DETECT THE LAYER RATIO
-            {
-                PF_FpLong InputWidthF , InputHeightF , PixRatioNumF, PixRatioDenF;
-                InputWidthF  = in_data->width;
-                InputHeightF  = in_data->height;
-                PixRatioNumF = in_data->pixel_aspect_ratio.num;
-                PixRatioDenF = in_data->pixel_aspect_ratio.den;
-                
-               
-                PF_FpLong scale_x = in_data->downsample_x.num/ (float)in_data->downsample_x.den,
-                scale_y = in_data->downsample_y.num/ (float)in_data->downsample_y.den;
-                InputWidthF  *= scale_x;
-                InputHeightF  *= scale_y;
-                scanlayerRatioF  =  InputWidthF  / InputHeightF ; //ratio input from layer
-            }
-           
-            
+
             params[LETB_SLIDER]->u.fs_d.value= scanlayerRatioF;
             params[LETB_SLIDER]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
             
@@ -1294,7 +1286,7 @@ UpdateParameterUI(
     
     
     PF_ParamDef		param_copy[LETB_NUM_PARAMS];
-    ERR(MakeParamCopy(params, param_copy));
+    ERR(MakeParamCopy(in_data, params, param_copy));
     
 
     
@@ -1565,43 +1557,41 @@ Render(	PF_InData		*in_data,
     
 
     prerender_letP		letP;
-   
-    
-    
-    letP.in_data = *in_data;
-    letP.samp_pb.src = inputP;
-    
-    letP.InputWidthF  = in_data->width; 
-    letP.InputHeightF  = in_data->height;
-    letP.PixRatioNumF = in_data->pixel_aspect_ratio.num;
-    letP.PixRatioDenF = in_data->pixel_aspect_ratio.den;
-   
-    PF_FpLong scale_x = in_data->downsample_x.num/ (float)in_data->downsample_x.den,
-                scale_y = in_data->downsample_y.num/ (float)in_data->downsample_y.den;
-    
-    letP.InputWidthF  *= scale_x;
-    letP.InputHeightF  *= scale_y;
-    
-    letP.compoffxF =0;
-    letP.compoffyF =0;
-    
-    //Those param are used in AE smart render not in Prems
-    letP.letoffxF = 0;
-    letP.letoffyF = 0;
-    letP.layerWidthF =   letP.InputWidthF;
-    letP.layerHeightF =  letP.InputHeightF;
-    
-    
-    
-     letP.layerRatioF = (((double)in_data->width) *  letP.PixRatioNumF) / ((double)in_data->height*letP.PixRatioDenF); //ratio input from layer
-    
-
-    letP.Color = params[LETB_COLOR]->u.cd.value;
-    letP.PoTransparentB = params[LETB_TRSP]->u.bd.value;
-    
-
 
     if (in_data->appl_id == 'PrMr') {
+        
+     
+        
+        letP.in_data = *in_data;
+        letP.samp_pb.src = inputP;
+        
+        letP.InputWidthF  = in_data->width;
+        letP.InputHeightF  = in_data->height;
+        letP.PixRatioNumF = in_data->pixel_aspect_ratio.num;
+        letP.PixRatioDenF = in_data->pixel_aspect_ratio.den;
+        
+        PF_FpLong scale_x = in_data->downsample_x.num/ (float)in_data->downsample_x.den,
+        scale_y = in_data->downsample_y.num/ (float)in_data->downsample_y.den;
+        
+        letP.InputWidthF  *= scale_x;
+        letP.InputHeightF  *= scale_y;
+        
+        letP.compoffxF =0;
+        letP.compoffyF =0;
+        
+        //Those param are used in AE smart render not in Prems
+        letP.letoffxF = 0;
+        letP.letoffyF = 0;
+        letP.layerWidthF =   letP.InputWidthF;
+        letP.layerHeightF =  letP.InputHeightF;
+        
+        
+            letP.layerRatioF = (((double)in_data->width) *  letP.PixRatioNumF) / ((double)in_data->height*letP.PixRatioDenF); //ratio input from layer
+            
+            
+            letP.Color = params[LETB_COLOR]->u.cd.value;
+            letP.PoTransparentB = params[LETB_TRSP]->u.bd.value;
+            
 
         if (MODE_BASIC == params[LETB_MODE]->u.pd.value){
             GetPresetRatioValue( params[LETB_PRESET]->u.pd.value, &letP.userRatioF);

@@ -32,8 +32,13 @@
 #include "Param_Utils.h"
 #include "String_Utils.h"
 #include "AEGP_SuiteHandler.h"
-#include "PrSDKAESupport.h"
+
 #include "getPixel.h"
+
+//FOR PREMIER
+#include "PrSDKAESupport.h"
+
+
 
 
 #define	MAJOR_VERSION		2
