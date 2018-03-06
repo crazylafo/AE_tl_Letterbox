@@ -36,8 +36,8 @@
 #include "getPixel.h"
 
 
-#define	MAJOR_VERSION		1
-#define	MINOR_VERSION		4
+#define	MAJOR_VERSION		2
+#define	MINOR_VERSION		2
 #define	BUG_VERSION			4
 #define	STAGE_VERSION		PF_Stage_RELEASE
 #define	BUILD_VERSION		2
@@ -123,27 +123,40 @@ typedef struct{
 	PF_FpLong           InputHeightF;
 	PF_FpLong           PixRatioNumF;
 	PF_FpLong           PixRatioDenF;
-	PF_Fixed            x_tA;
-	PF_Fixed            y_tA;
-	PF_Boolean          PoTransparentB;
     PF_InData           in_data;
     PF_SampPB           samp_pb;
+
+	PF_Boolean          PoTransparentB;
     PF_FpLong           PreseTvalueF;
     PF_FpLong           SlidervalueF;
     PF_Pixel            Color;
     PF_Pixel32          Color32;
+    
     PF_FpLong           scaleFactorF;
+    PF_FpLong           scaleFactorxF;
+    PF_FpLong           scaleFactoryF;
     PF_Boolean          compModeB;
-    A_long               forceSizeB;
+    A_long              forceSizeB;
+    
+    PF_Fixed            x_tA;
+    PF_Fixed            y_tA;
     PF_Fixed            x_offF;
     PF_Fixed            y_offF;
-    PF_FpLong            x_offsetF;
-    PF_FpLong            y_offsetF;
+    PF_FpLong           x_offsetF;
+    PF_FpLong           y_offsetF;
+    
     PF_FpLong            compWidthF;
     PF_FpLong            compHeightF;
     PF_FpLong            compRatioF;
+    
     PF_FpLong            letoffxF;
     PF_FpLong            letoffyF;
+    
+    PF_FpLong            compoffxF;
+    PF_FpLong            compoffyF;
+    
+    PF_FpLong            layerPx;
+    PF_FpLong            layerPy;
 
     
 } prerender_letP, *pre_render_letPP, **pre_render_letPH;

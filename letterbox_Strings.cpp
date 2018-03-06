@@ -56,7 +56,7 @@ TableString		g_strs[StrID_NUMTYPES] = {
                                     "Whole layer",
     StrID_Layer_colorAnalysName,    "Color Limit",
     StrID_CheckboxName,             "Detect Layer Ratio",
-    StrID_CheckboxCaption,          "Try to detect the black scopes",
+    StrID_CheckboxCaption,          "DETECT SCOPES",
     
     StrID_settings_Param_Name,   "Settings",
     StrID_SizeSourceName,		"Source Size",
