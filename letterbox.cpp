@@ -1270,8 +1270,8 @@ UpdateParameterUI(
     center_streamH      = NULL,
     resize_streamH      = NULL,
     topic2_streamH      = NULL,
-    sizeSource_streamH  = NULL,
-    forceScale_streamH  = NULL;
+    sizeSource_streamH  = NULL;
+
 
     
     PF_ParamType		param_type;
@@ -1386,7 +1386,7 @@ UpdateParameterUI(
         }
         if (forceScale_streamH){
             ERR2(suites.StreamSuite2()->AEGP_DisposeStream(forceScale_streamH));
-        }
+
         
 
         if (!err){
