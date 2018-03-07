@@ -1384,10 +1384,6 @@ UpdateParameterUI(
         if (sizeSource_streamH){
             ERR2(suites.StreamSuite2()->AEGP_DisposeStream(sizeSource_streamH));
         }
-        if (forceScale_streamH){
-            ERR2(suites.StreamSuite2()->AEGP_DisposeStream(forceScale_streamH));
-
-        
 
         if (!err){
             out_data->out_flags |= PF_OutFlag_FORCE_RERENDER;
