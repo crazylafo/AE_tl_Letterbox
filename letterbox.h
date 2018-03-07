@@ -162,6 +162,8 @@ typedef struct{
     
     PF_FpLong            layerPx;
     PF_FpLong            layerPy;
+	PF_FpLong            layerSx;
+	PF_FpLong            layerSy;
 
     
 } prerender_letP, *pre_render_letPP, **pre_render_letPH;

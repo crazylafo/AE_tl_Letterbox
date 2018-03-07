@@ -499,37 +499,37 @@ CalculateBox(
     
     
     
-    //Modification of offsets here.
+ 
 
 	//definitions for horizontal letterbox
-    CondBlackHupF = ((letP->InputHeightF - (letP->InputWidthF/(letP->userRatioF)))/ 2)-(0.5*letP->letoffyF)+letP->compoffyF;
-    if(letP->compoffyF >0)
-    {
-        offsetCompyF = ABS(letP->compoffyF);
-        
-    }
-    else
-    {
-        offsetCompyF = - ABS(letP->compoffyF);
-    }
-    
-    CondBlackHdownF =   letP->layerHeightF -(((letP->InputHeightF - (letP->InputWidthF/(letP->userRatioF)))/ 2)-(0.5*letP->letoffyF))+  offsetCompyF;
+	CondBlackHupF = ((letP->InputHeightF - (letP->InputWidthF / (letP->userRatioF))) / 2) - (0.5*letP->letoffyF) + letP->compoffyF;
+	if (letP->compoffyF >0)
+	{
+		offsetCompyF = ABS(letP->compoffyF);
 
-    
+	}
+	else
+	{
+		offsetCompyF = -ABS(letP->compoffyF);
+	}
+
+	CondBlackHdownF = letP->layerHeightF - (((letP->InputHeightF - (letP->InputWidthF / (letP->userRatioF))) / 2) - (0.5*letP->letoffyF)) + offsetCompyF;
+
+
 
 	//definitions for verticals letterbox
-    CondBlackVleftF = ((letP->InputWidthF - letP->InputHeightF *  letP->userRatioF)/2)-(0.5*letP->letoffxF)+letP->compoffxF;
-    if(letP->compoffxF >0)
-    {
-        offsetCompxF = ABS(letP->compoffxF);
-        
-    }
-    else
-    {
-        offsetCompxF = - ABS(letP->compoffxF);
-    }
-    
-    CondBlackVrightF = letP->layerWidthF   - (((letP->InputWidthF - letP->InputHeightF *  letP->userRatioF)/2)-(0.5*letP->letoffxF)) +  offsetCompxF;
+	CondBlackVleftF = ((letP->InputWidthF - letP->InputHeightF *  letP->userRatioF) / 2) - (0.5*letP->letoffxF) + letP->compoffxF;
+	if (letP->compoffxF >0)
+	{
+		offsetCompxF = ABS(letP->compoffxF);
+
+	}
+	else
+	{
+		offsetCompxF = -ABS(letP->compoffxF);
+	}
+
+	CondBlackVrightF = letP->layerWidthF - (((letP->InputWidthF - letP->InputHeightF *  letP->userRatioF) / 2) - (0.5*letP->letoffxF)) + offsetCompxF;
 
 
 	if (letP)
@@ -1156,7 +1156,7 @@ UserChangedParam(
                         //return current layer and current layer Comp
                         ERR(suites.PFInterfaceSuite1()->AEGP_GetEffectLayer(in_data->effect_ref, &curLayerH));
                         ERR(suites.LayerSuite8()->AEGP_GetLayerParentComp(curLayerH, &compPH));
-                        ERR(suites.CompSuite11()->AEGP_GetCompFramerate(compPH, &fpsPF));
+                        ERR(suites.CompSuite10()->AEGP_GetCompFramerate(compPH, &fpsPF));
                         
 
                         ERR(suites.PFInterfaceSuite1()->AEGP_GetNewEffectForEffect(globP->my_id,in_data->effect_ref,&effectPH));
@@ -1184,7 +1184,7 @@ UserChangedParam(
                            }
                             A_Time compTime;
                             A_Boolean activeB;
-                            compTime.value = i*inPPT.scale/fpsPF;
+                            compTime.value = A_long( i*inPPT.scale/fpsPF);
                             compTime.scale = inPPT.scale;
                             
 
@@ -1574,7 +1574,8 @@ Render(	PF_InData		*in_data,
         
         letP.compoffxF =0;
         letP.compoffyF =0;
-        
+		letP.layerSx = 100;
+		letP.layerSy = 100;
         //Those param are used in AE smart render not in Prems
         letP.letoffxF = 0;
         letP.letoffyF = 0;
@@ -1678,7 +1679,7 @@ Render(	PF_InData		*in_data,
         else
         {
             AEFX_CLR_STRUCT(composite_mode);
-            composite_mode.opacity = PF_MAX_CHAN16;
+            composite_mode.opacity = PF_MAX_CHAN8;
             composite_mode.opacitySu =PF_MAX_CHAN16;
             composite_mode.xfer = PF_Xfer_COPY;
             ERR(in_data->utils->transform_world(in_data->effect_ref,
@@ -1805,9 +1806,10 @@ PreRender(
                                                                                               kAEGPCompSuite,
                                                                                               kAEGPCompSuiteVersion10,
                                                                                               out_data);
-            AEFX_SuiteScoper<AEGP_ItemSuite9> itemSuite = AEFX_SuiteScoper<AEGP_ItemSuite9>(  in_data,
+
+            AEFX_SuiteScoper<AEGP_ItemSuite8> itemSuite = AEFX_SuiteScoper<AEGP_ItemSuite8>(  in_data,
                                                                                             kAEGPItemSuite,
-                                                                                            kAEGPItemSuiteVersion9,
+                                                                                            kAEGPItemSuiteVersion8,
                                                                                             out_data);
             
             AEFX_SuiteScoper<AEGP_StreamSuite4> StreamSuite = AEFX_SuiteScoper<AEGP_StreamSuite4>(  in_data,
@@ -1823,7 +1825,7 @@ PreRender(
             compSuite->AEGP_GetItemFromComp (compH, &itemH);
             A_long width, height;
             A_Time currTime;
-            AEGP_StreamVal2 strValP;
+            AEGP_StreamVal2 strValP, strValSP ;
             AEGP_StreamType  strTypeP;
              AEFX_CLR_STRUCT(width);
             AEFX_CLR_STRUCT(height);
@@ -1835,12 +1837,15 @@ PreRender(
             StreamSuite->AEGP_GetLayerStreamValue(layerH, AEGP_LayerStream_POSITION, AEGP_LTimeMode_LayerTime, &currTime, NULL, &strValP, &strTypeP);
             letP->layerPx = strValP.three_d.x;
             letP->layerPy = strValP.three_d.y;
-            
+			StreamSuite->AEGP_GetLayerStreamValue(layerH, AEGP_LayerStream_SCALE, AEGP_LTimeMode_LayerTime, &currTime, NULL, &strValSP, &strTypeP);
+			letP->layerSx = strValSP.three_d.x;
+			letP->layerSy = strValSP.three_d.y;
             
             if (extraP->cb->GuidMixInPtr) {
                 extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(width), reinterpret_cast<void *>(&width));
                 extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(height), reinterpret_cast<void *>(&height));
                 extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(strValP), reinterpret_cast<void *>(&strValP));
+				extraP->cb->GuidMixInPtr(in_data->effect_ref, sizeof(strValP), reinterpret_cast<void *>(&strValSP));
             }
            
             
@@ -2067,7 +2072,7 @@ SmartRender(
             
             
             //if compMode
-            if (letP->compModeB ==true)
+            if (letP->compModeB ==TRUE)
             {
                 letP->layerRatioF = (((double)letP->compWidthF) *  letP->PixRatioNumF) / ((double)letP->compHeightF *letP->PixRatioDenF); //ratio input from comp;
                 letP->letoffxF =  (PF_FpLong (letP->compWidthF-  letP->layerWidthF));
@@ -2078,16 +2083,15 @@ SmartRender(
                 letP->compoffxF =(0.5*letP->compWidthF)- letP-> layerPx;
                 letP->compoffyF =(0.5*letP->compHeightF)- letP-> layerPy;
                 
-                /*Given a layer handle and time, returns the layer-to-world transformation matrix.
-                AEGP_GetLayerToWorldXform(
-                                          AEGP_LayerH const A_Time A_Matrix4
-                                          aegp_layerH,  *comp_timeP,  *transform);*/
+ 
 
             }
             else
             {
                 letP->compoffxF =0;
                 letP->compoffyF =0;
+				letP->layerSx = 100;
+				letP->layerSy = 100;
                 letP->letoffxF =0;
                 letP->letoffyF = 0;
                 letP->layerRatioF = (((double)in_data->width) *  letP->PixRatioNumF) / ((double)in_data->height*letP->PixRatioDenF); //ratio input from layer;
