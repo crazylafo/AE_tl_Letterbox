@@ -491,18 +491,26 @@ CalculateBox(
 	PF_Err		err = PF_Err_NONE;
 
 
-    PF_FpLong CondBlackHupF, CondBlackHdownF, CondBlackVleftF, CondBlackVrightF, offsetCompxF, offsetCompyF;
+    PF_FpLong CondBlackHupF, CondBlackHdownF, CondBlackVleftF, CondBlackVrightF, offsetCompxF, offsetCompyF, offsetScalex, offsetScaley;
 	prerender_letP	*letP = reinterpret_cast<prerender_letP*>(refcon);
 
 	int userRatioInt = int(letP->userRatioF * 100);
 	int layerRatioInt = int(letP->layerRatioF * 100);
     
+    if (letP->layerSy <=100)
+    {
+        offsetScalex = -ABS( 0.5*(letP->layerHeightF * (letP->layerSy/100 )-letP->layerHeightF));
+        
+    }
+    else
+    {
+        offsetScalex = ABS( 0.5*(letP->InputHeightF * (1-(letP->layerSy/100 ))));
+    }
     
     
- 
-
+    
 	//definitions for horizontal letterbox
-	CondBlackHupF = ((letP->InputHeightF - (letP->InputWidthF / (letP->userRatioF))) / 2) - (0.5*letP->letoffyF) + letP->compoffyF;
+	CondBlackHupF = ((letP->InputHeightF - (letP->InputWidthF / (letP->userRatioF))) / 2)- (0.5*letP->letoffyF) + letP->compoffyF*(100/letP->layerSy) +offsetScalex;
 	if (letP->compoffyF >0)
 	{
 		offsetCompyF = ABS(letP->compoffyF);
