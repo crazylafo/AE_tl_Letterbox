@@ -491,26 +491,18 @@ CalculateBox(
 	PF_Err		err = PF_Err_NONE;
 
 
-    PF_FpLong CondBlackHupF, CondBlackHdownF, CondBlackVleftF, CondBlackVrightF, offsetCompxF, offsetCompyF, offsetScalex, offsetScaley;
+    PF_FpLong CondBlackHupF, CondBlackHdownF, CondBlackVleftF, CondBlackVrightF, offsetCompxF, offsetCompyF;
 	prerender_letP	*letP = reinterpret_cast<prerender_letP*>(refcon);
 
 	int userRatioInt = int(letP->userRatioF * 100);
 	int layerRatioInt = int(letP->layerRatioF * 100);
     
-    if (letP->layerSy <=100)
-    {
-        offsetScalex = -ABS( 0.5*(letP->layerHeightF * (letP->layerSy/100 )-letP->layerHeightF));
-        
-    }
-    else
-    {
-        offsetScalex = ABS( 0.5*(letP->InputHeightF * (1-(letP->layerSy/100 ))));
-    }
+
     
     
     
 	//definitions for horizontal letterbox
-	CondBlackHupF = ((letP->InputHeightF - (letP->InputWidthF / (letP->userRatioF))) / 2)- (0.5*letP->letoffyF) + letP->compoffyF*(100/letP->layerSy) +offsetScalex;
+	CondBlackHupF = ((letP->InputHeightF - (letP->InputWidthF / (letP->userRatioF))) / 2)- (0.5*letP->letoffyF)-1; //-1 because the first val =0
 	if (letP->compoffyF >0)
 	{
 		offsetCompyF = ABS(letP->compoffyF);
@@ -526,7 +518,7 @@ CalculateBox(
 
 
 	//definitions for verticals letterbox
-	CondBlackVleftF = ((letP->InputWidthF - letP->InputHeightF *  letP->userRatioF) / 2) - (0.5*letP->letoffxF) + letP->compoffxF;
+    CondBlackVleftF = ((letP->InputWidthF - letP->InputHeightF *  letP->userRatioF) / 2) - (0.5*letP->letoffxF) + letP->compoffxF -1; //-1 because the first val =0
 	if (letP->compoffxF >0)
 	{
 		offsetCompxF = ABS(letP->compoffxF);
