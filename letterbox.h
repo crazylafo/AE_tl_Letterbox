@@ -43,7 +43,7 @@
 
 #define	MAJOR_VERSION		2
 #define	MINOR_VERSION		2
-#define	BUG_VERSION			4
+#define	BUG_VERSION			5
 #define	STAGE_VERSION		PF_Stage_RELEASE
 #define	BUILD_VERSION		2
 

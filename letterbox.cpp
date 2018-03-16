@@ -2042,7 +2042,7 @@ SmartRender(
             letP->PixRatioNumF = in_data->pixel_aspect_ratio.num;
             letP->PixRatioDenF = in_data->pixel_aspect_ratio.den;
             PF_FpLong scale_x = in_data->downsample_x.num / (float)in_data->downsample_x.den,
-            scale_y = in_data->downsample_y.num / (float)in_data->downsample_y.den;
+                        scale_y = in_data->downsample_y.num / (float)in_data->downsample_y.den;
             
             
             letP->InputWidthF  = PF_FpLong (in_data->width);
@@ -2053,6 +2053,8 @@ SmartRender(
             letP->InputHeightF  *=   scale_y;
             letP->compWidthF    *=   scale_x;
             letP->compHeightF   *=   scale_y;
+            letP->layerPx       *=   scale_x;
+            letP->layerPy       *=   scale_y;
             
             letP->layerWidthF =   letP->InputWidthF;
             letP->layerHeightF =  letP->InputHeightF;
@@ -2080,8 +2082,8 @@ SmartRender(
                 letP->InputWidthF =  PF_FpLong (letP->compWidthF);
                 letP->InputHeightF = PF_FpLong (letP->compHeightF);
                 
-                letP->compoffxF =(0.5*letP->compWidthF)- letP-> layerPx;
-                letP->compoffyF =(0.5*letP->compHeightF)- letP-> layerPy;
+                letP->compoffxF =(0.5*letP->compWidthF)- letP->layerPx;
+                letP->compoffyF =(0.5*letP->compHeightF)- letP->layerPy;
                 
  
 
