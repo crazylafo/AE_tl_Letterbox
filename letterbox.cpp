@@ -502,7 +502,7 @@ CalculateBox(
     
     
 	//definitions for horizontal letterbox
-	CondBlackHupF = ((letP->InputHeightF - (letP->InputWidthF / (letP->userRatioF))) / 2)- (0.5*letP->letoffyF)-1; //-1 because the first val =0
+	CondBlackHupF = ((letP->InputHeightF - (letP->InputWidthF / (letP->userRatioF))) / 2)- (0.5*letP->letoffyF) + letP->compoffyF -1; //-1 because the first val =0
 	if (letP->compoffyF >0)
 	{
 		offsetCompyF = ABS(letP->compoffyF);
