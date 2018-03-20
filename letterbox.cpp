@@ -491,45 +491,56 @@ CalculateBox(
 	PF_Err		err = PF_Err_NONE;
 
 
-    PF_FpLong CondBlackHupF, CondBlackHdownF, CondBlackVleftF, CondBlackVrightF, offsetCompxF, offsetCompyF;
+    PF_FpLong CondBlackHupF, CondBlackHdownF, CondBlackVleftF, CondBlackVrightF, offsetCompDownxF, offsetCompDownyF;
 	prerender_letP	*letP = reinterpret_cast<prerender_letP*>(refcon);
 
 	int userRatioInt = int(letP->userRatioF * 100);
 	int layerRatioInt = int(letP->layerRatioF * 100);
     
+    if (letP->compoffyF >0)
+    {
+        offsetCompDownyF = ABS(letP->compoffyF);
+        
+    }
+    else
+    {
+        offsetCompDownyF = -ABS(letP->compoffyF);
+    }
+    if (letP->compoffxF >0)
+    {
+
+        offsetCompDownxF = ABS(letP->compoffxF);
+    }
+    else
+    {
+        offsetCompDownxF = -ABS(letP->compoffxF);
+    }
 
     
-    
-    
+
 	//definitions for horizontal letterbox
 	CondBlackHupF = ((letP->InputHeightF - (letP->InputWidthF / (letP->userRatioF))) / 2)- (0.5*letP->letoffyF) + letP->compoffyF -1; //-1 because the first val =0
-	if (letP->compoffyF >0)
-	{
-		offsetCompyF = ABS(letP->compoffyF);
-
-	}
-	else
-	{
-		offsetCompyF = -ABS(letP->compoffyF);
-	}
-
-	CondBlackHdownF = letP->layerHeightF - (((letP->InputHeightF - (letP->InputWidthF / (letP->userRatioF))) / 2) - (0.5*letP->letoffyF)) + offsetCompyF;
+	CondBlackHdownF = letP->layerHeightF - (((letP->InputHeightF - (letP->InputWidthF / (letP->userRatioF))) / 2) - (0.5*letP->letoffyF)) + offsetCompDownyF;
+    
+    if (letP->layerSy != 1 )
+    {
+        CondBlackHupF = (CondBlackHupF + 0.5* (letP->InputHeightF* letP->layerSy -letP->InputHeightF ) )/ letP->layerSy;
+        CondBlackHdownF = (CondBlackHdownF + 0.5* (letP->InputHeightF* letP->layerSy -letP->InputHeightF ) )/ letP->layerSy;
+    }
 
 
 
 	//definitions for verticals letterbox
     CondBlackVleftF = ((letP->InputWidthF - letP->InputHeightF *  letP->userRatioF) / 2) - (0.5*letP->letoffxF) + letP->compoffxF -1; //-1 because the first val =0
-	if (letP->compoffxF >0)
-	{
-		offsetCompxF = ABS(letP->compoffxF);
+	CondBlackVrightF = letP->layerWidthF - (((letP->InputWidthF - letP->InputHeightF *  letP->userRatioF) / 2) - (0.5*letP->letoffxF)) + offsetCompDownxF;
+    
+    if (letP->layerSx != 1 )
+    {
+       CondBlackVleftF = (CondBlackVleftF + 0.5* (letP->InputWidthF* letP->layerSx -letP->InputWidthF ) )/ letP->layerSx;
+       CondBlackVrightF = (CondBlackVrightF + 0.5* (letP->InputWidthF* letP->layerSx -letP->InputWidthF) )/ letP->layerSx;
+    }
+    
 
-	}
-	else
-	{
-		offsetCompxF = -ABS(letP->compoffxF);
-	}
-
-	CondBlackVrightF = letP->layerWidthF - (((letP->InputWidthF - letP->InputHeightF *  letP->userRatioF) / 2) - (0.5*letP->letoffxF)) + offsetCompxF;
 
 
 	if (letP)
@@ -599,7 +610,6 @@ PixelFunc8 (
         }
         else
         {
-
             new_xFi = PF_Fixed( (((A_long)xL << 16) + letP->x_offF)/ letP->scaleFactorF);
             new_yFi = PF_Fixed( (((A_long)yL << 16) + letP->y_offF)/ letP->scaleFactorF);
             
@@ -632,6 +642,7 @@ PixelFunc16(
     PF_InData			*in_data	= &(letP->in_data);
     PF_Fixed                new_xFi		= 0,
     new_yFi		= 0;
+    PF_Pixel16 *PosOutP = outP;
 	
 
 	if (letP){
@@ -657,11 +668,11 @@ PixelFunc16(
                                                         new_xFi,
                                                         new_yFi,
                                                         &letP->samp_pb,
-                                                        outP));
+                                                        PosOutP));
             
-            outP->red = A_long ( outP->red   *   CalculateBox(refcon, xL, yL)+ (scratch16.red * (1- CalculateBox(refcon, xL, yL))));
-            outP->green = A_long ( outP->green *   CalculateBox(refcon, xL, yL)+ (scratch16.green * (1- CalculateBox(refcon, xL, yL))));
-            outP->blue = A_long (outP->blue   *   CalculateBox(refcon, xL, yL)+ (scratch16.blue * (1- CalculateBox(refcon, xL, yL))));
+            outP->red = A_long ( PosOutP->red   *   CalculateBox(refcon, xL, yL)+ (scratch16.red * (1- CalculateBox(refcon, xL, yL))));
+            outP->green = A_long ( PosOutP->green *   CalculateBox(refcon, xL, yL)+ (scratch16.green * (1- CalculateBox(refcon, xL, yL))));
+            outP->blue = A_long (PosOutP->blue   *   CalculateBox(refcon, xL, yL)+ (scratch16.blue * (1- CalculateBox(refcon, xL, yL))));
             outP->alpha	= inP->alpha;
         }
 	}
@@ -680,6 +691,7 @@ PixelFuncFloat(
 	prerender_letP*	letP = reinterpret_cast<prerender_letP*>(refcon);
     PF_Fixed			new_xFi 		= 0,
                         new_yFi 		= 0;
+    PF_Pixel32 *PosOutP = outP;
 	
 	if (letP){
         if (letP->PoTransparentB == TRUE)
@@ -702,11 +714,11 @@ PixelFuncFloat(
                                                                     new_xFi,
                                                                     new_yFi, 
                                                                     &letP->samp_pb,
-                                                                    outP));
+                                                                    PosOutP));
                 
-                outP->red =   (outP->red   *   CalculateBox(refcon, xL, yL)+ (letP->Color32.red * (1- CalculateBox(refcon, xL, yL))));
-                outP->green = (outP->green *   CalculateBox(refcon, xL, yL)+ (letP->Color32.green * (1- CalculateBox(refcon, xL, yL))));
-                outP->blue =  (outP->blue   *   CalculateBox(refcon, xL, yL)+ (letP->Color32.blue * (1- CalculateBox(refcon, xL, yL))));
+                outP->red =   (PosOutP->red   *   CalculateBox(refcon, xL, yL)+ (letP->Color32.red * (1- CalculateBox(refcon, xL, yL))));
+                outP->green = (PosOutP->green *   CalculateBox(refcon, xL, yL)+ (letP->Color32.green * (1- CalculateBox(refcon, xL, yL))));
+                outP->blue =  (PosOutP->blue   *   CalculateBox(refcon, xL, yL)+ (letP->Color32.blue * (1- CalculateBox(refcon, xL, yL))));
                 outP->alpha	= inP->alpha;
             }
             else
@@ -723,54 +735,7 @@ PixelFuncFloat(
 	return err;
 }
 //RENDER FUNCTIONS FOR PREMIERE
-/*
-static PF_Err
-PixelFuncVUYA_32f(
-                  void			*refcon,
-                  A_long			xL,
-                  A_long			yL,
-                  PF_PixelFloat	*inP,
-                  PF_PixelFloat	*outP)
-{
-    PF_Err			err = PF_Err_NONE;
-    
-    
-    PF_Pixel_VUYA_32f *inVUYA_32f, *outVUYA_32f;
-    
-    inVUYA_32f = reinterpret_cast<PF_Pixel_VUYA_32f*>(inP);
-    outVUYA_32f = reinterpret_cast<PF_Pixel_VUYA_32f*>(outP);
-    
-    prerender_letP*	letP = reinterpret_cast<prerender_letP*>(refcon);
-    PF_Pixel_VUYA_32f ColorYuv;
 
-    
-    if (letP) {
-
-        
-        ColorYuv.luma = PF_FpShort ((0.257 * letP->Color.red) + (0.504 * letP->Color.green) + (0.098 * letP->Color.blue))+16/219;
-        ColorYuv.Pb =   PF_FpShort (-(0.148 * letP->Color.red) - (0.291 * letP->Color.green) + (0.439 * letP->Color.blue) )+128/224;
-        ColorYuv.Pr =   PF_FpShort ((0.439 * letP->Color.red) - (0.368 * letP->Color.green) - (0.071 * letP->Color.blue) ) +128/224;
-        
-        if (letP->PoTransparentB == TRUE)
-        {
-            outVUYA_32f->alpha   =(1 - (CalculateBox(refcon, xL, yL)));
-            outVUYA_32f->luma =   ColorYuv.luma;
-            outVUYA_32f->Pb =     ColorYuv.Pb;
-            outVUYA_32f->Pr =     ColorYuv.Pr;
-        }
-        else
-        {
-        
-            outVUYA_32f->alpha =   inVUYA_32f->alpha;
-           
-            outVUYA_32f->luma = inVUYA_32f->luma   *   CalculateBox(refcon, xL, yL)+ (ColorYuv.luma*(1- CalculateBox(refcon, xL, yL)));
-            outVUYA_32f->Pb = inVUYA_32f->Pb *      CalculateBox(refcon, xL, yL)+ (ColorYuv.Pb*(1- CalculateBox(refcon, xL, yL)));
-            outVUYA_32f->Pr = inVUYA_32f->Pr *       CalculateBox(refcon, xL, yL) + (ColorYuv.Pr*(1- CalculateBox(refcon, xL, yL)));
-
-        }
-    }
-    return err;
-}*/
 
 static PF_Err
 PixelFuncBGRA_32f(
@@ -1574,8 +1539,8 @@ Render(	PF_InData		*in_data,
         
         letP.compoffxF =0;
         letP.compoffyF =0;
-		letP.layerSx = 100;
-		letP.layerSy = 100;
+		letP.layerSx = 1;
+		letP.layerSy = 1;
         //Those param are used in AE smart render not in Prems
         letP.letoffxF = 0;
         letP.letoffyF = 0;
@@ -2065,6 +2030,7 @@ SmartRender(
             letP->in_data = *in_data;
             letP->samp_pb.src = inputP;
             
+
             
             // determine requested output depth
             ERR(wsP->PF_GetPixelFormat(outputP, &format));
@@ -2077,23 +2043,28 @@ SmartRender(
             if (letP->compModeB ==TRUE)
             {
                 letP->layerRatioF = (((double)letP->compWidthF) *  letP->PixRatioNumF) / ((double)letP->compHeightF *letP->PixRatioDenF); //ratio input from comp;
+                
+                letP->layerSx = letP->layerSx/100;
+                letP->layerSy = letP->layerSy/100;
+                
                 letP->letoffxF =  (PF_FpLong (letP->compWidthF-  letP->layerWidthF));
                 letP->letoffyF =  (PF_FpLong (letP->compHeightF- letP->layerHeightF));
+                
                 letP->InputWidthF =  PF_FpLong (letP->compWidthF);
                 letP->InputHeightF = PF_FpLong (letP->compHeightF);
                 
                 letP->compoffxF =(0.5*letP->compWidthF)- letP->layerPx;
                 letP->compoffyF =(0.5*letP->compHeightF)- letP->layerPy;
                 
- 
+             
 
             }
             else
             {
                 letP->compoffxF =0;
                 letP->compoffyF =0;
-				letP->layerSx = 100;
-				letP->layerSy = 100;
+				letP->layerSx = 1;
+				letP->layerSy = 1;
                 letP->letoffxF =0;
                 letP->letoffyF = 0;
                 letP->layerRatioF = (((double)in_data->width) *  letP->PixRatioNumF) / ((double)in_data->height*letP->PixRatioDenF); //ratio input from layer;
