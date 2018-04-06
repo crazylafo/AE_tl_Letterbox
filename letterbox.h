@@ -33,8 +33,6 @@
 #include "String_Utils.h"
 #include "AEGP_SuiteHandler.h"
 
-#include "getPixel.h"
-
 //FOR PREMIER
 #include "PrSDKAESupport.h"
 
