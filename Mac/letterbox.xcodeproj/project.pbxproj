@@ -18,7 +18,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0438EAC2202CF0D900DE2671 /* getPixel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = getPixel.h; path = ../getPixel.h; sourceTree = "<group>"; };
 		7E7144C81047138500793D95 /* AEFX_SuiteHelper.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = AEFX_SuiteHelper.c; path = ../../../Util/AEFX_SuiteHelper.c; sourceTree = SOURCE_ROOT; };
 		7E7144C91047138500793D95 /* AEFX_SuiteHelper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AEFX_SuiteHelper.h; path = ../../../Util/AEFX_SuiteHelper.h; sourceTree = SOURCE_ROOT; };
 		7EF36FB916F29899002A3CB3 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
@@ -50,7 +49,6 @@
 		C4E6187C095A3C800012CA3F = {
 			isa = PBXGroup;
 			children = (
-				0438EAC2202CF0D900DE2671 /* getPixel.h */,
 				D075387E09940A81000099DF /* letterbox.cpp */,
 				7EF3705D16F29D2E002A3CB3 /* letterbox.h */,
 				D075388409940AC8000099DF /* letterbox_Strings.cpp */,

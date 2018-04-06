@@ -44,7 +44,7 @@
       allowLocationSimulation = "YES">
       <PathRunnable
          runnableDebuggingMode = "0"
-         FilePath = "/Applications/Adobe After Effects CC 2017/Adobe After Effects CC 2017.app">
+         FilePath = "/Applications/Adobe After Effects CC 2018/Adobe After Effects CC 2018.app">
       </PathRunnable>
       <MacroExpansion>
          <BuildableReference
