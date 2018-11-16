@@ -15,7 +15,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "486"
             endingLineNumber = "486"
-            landmarkName = "GetRatioFromWorld ( PF_InData *in_data, PF_EffectWorld *detectWorldP, PF_PixelFormat pxformat, PF_FpLong *detectedRatioF, PF_PixelFloat analysColor)"
+            landmarkName = "CalculateBox( void *refcon, PF_FpLong xL, PF_FpLong yL)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -31,7 +31,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "732"
             endingLineNumber = "732"
-            landmarkName = "PixelFunc16( void *refcon, A_long xL, A_long yL, PF_Pixel16 *inP, PF_Pixel16 *outP)"
+            landmarkName = "PixelFuncFloat( void *refcon, A_long xL, A_long yL, PF_PixelFloat *inP, PF_PixelFloat *outP)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -63,7 +63,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "1036"
             endingLineNumber = "1036"
-            landmarkName = "IterateFloat( PF_InData *in_data, long progress_base, long progress_final, PF_EffectWorld *src, void *refcon, PF_Err(*pix_fn)(void *refcon, A_long x, A_long y, PF_PixelFloat *in, PF_PixelFloat *out), PF_EffectWorld *dst)"
+            landmarkName = "UserChangedParam( PF_InData *in_data, PF_OutData *out_data, PF_ParamDef *params[], PF_LayerDef *outputP, const PF_UserChangedParamExtra *which_hitP)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -81,20 +81,6 @@
             endingLineNumber = "2048"
             landmarkName = "SmartRender( PF_InData *in_data, PF_OutData *out_data, PF_SmartRenderExtra *extraP)"
             landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "../letterbox.cpp"
-            timestampString = "544697109.078007"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "6"
-            endingLineNumber = "6">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>
