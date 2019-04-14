@@ -41,7 +41,7 @@
 
 #define	MAJOR_VERSION		2
 #define	MINOR_VERSION		3
-#define	BUG_VERSION			5
+#define	BUG_VERSION			6
 #define	STAGE_VERSION		PF_Stage_RELEASE
 #define	BUILD_VERSION		2
 
@@ -94,8 +94,8 @@ typedef struct {
 } PF_Pixel_BGRA_32f;
 
 typedef struct {
-    A_u_short	Pr, Pb, luma, alpha;
-} PF_Pixel_VUYA_16u;
+	PF_FpShort	Pr, Pb, luma, alpha;
+} PF_Pixel_VUYA_32f;
 
 
 
