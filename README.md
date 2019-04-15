@@ -15,7 +15,7 @@ The plugin has some parameters :
 -In After Effect only, the plugin can detect the ratio of the target layer
 
 
-![Alt text](./docs/images/interface.png)
+![Alt text](./docs/images/interface.PNG)
 
 ![Imgur Image](./docs/images/choose_size_of_the_letterbox.gif)
 
