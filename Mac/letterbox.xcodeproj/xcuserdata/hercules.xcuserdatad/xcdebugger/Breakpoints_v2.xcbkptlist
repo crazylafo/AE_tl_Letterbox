@@ -15,8 +15,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "486"
             endingLineNumber = "486"
-            landmarkName = "CalculateBox( void *refcon, PF_FpLong xL, PF_FpLong yL)"
-            landmarkType = "7">
+            landmarkName = "GetRatioFromWorld ( PF_InData *in_data, PF_EffectWorld *detectWorldP, PF_PixelFormat pxformat, PF_FpLong *detectedRatioF, PF_PixelFloat analysColor)"
+            landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -31,8 +31,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "732"
             endingLineNumber = "732"
-            landmarkName = "PixelFuncFloat( void *refcon, A_long xL, A_long yL, PF_PixelFloat *inP, PF_PixelFloat *outP)"
-            landmarkType = "7">
+            landmarkName = "PixelFunc16( void *refcon, A_long xL, A_long yL, PF_Pixel16 *inP, PF_Pixel16 *outP)"
+            landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -48,7 +48,7 @@
             startingLineNumber = "1397"
             endingLineNumber = "1397"
             landmarkName = "UpdateParameterUI( PF_InData *in_data, PF_OutData *out_data, PF_ParamDef *params[], PF_LayerDef *outputP)"
-            landmarkType = "7">
+            landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -63,8 +63,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "1036"
             endingLineNumber = "1036"
-            landmarkName = "UserChangedParam( PF_InData *in_data, PF_OutData *out_data, PF_ParamDef *params[], PF_LayerDef *outputP, const PF_UserChangedParamExtra *which_hitP)"
-            landmarkType = "7">
+            landmarkName = "MakeParamCopy( PF_InData *in_data, PF_ParamDef *actual[], /* &gt;&gt; */ PF_ParamDef copy[])"
+            landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -80,7 +80,7 @@
             startingLineNumber = "2048"
             endingLineNumber = "2048"
             landmarkName = "SmartRender( PF_InData *in_data, PF_OutData *out_data, PF_SmartRenderExtra *extraP)"
-            landmarkType = "7">
+            landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

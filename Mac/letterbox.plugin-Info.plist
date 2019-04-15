@@ -9,7 +9,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Supervisor</string>
+	<string>tl_letterbox</string>
 	<key>CFBundlePackageType</key>
 	<string>eFKT</string>
 	<key>CFBundleSignature</key>
@@ -19,6 +19,6 @@
 	<key>NSAppleScriptEnabled</key>
 	<string>No</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>© 1992-2006 Adobe Systems Incorporated</string>
+	<string>2017-2019 Thomas Laforge</string>
 </dict>
 </plist>
