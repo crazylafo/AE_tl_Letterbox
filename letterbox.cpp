@@ -501,7 +501,7 @@ GetRatioFromWorld (
                 }
                 else
                 {
-                    ratioHF = (((double)InputWidthF) *  PixRatioNumF) / ((double)InputHeightF *PixRatioDenF - 2 * i);
+                    ratioHF = (((double)InputWidthF) *  PixRatioNumF) / ((double)InputHeightF *PixRatioDenF - 2 * (i+1));
                 }
 				i = halfHeightA - 1;
 				break;
@@ -521,7 +521,7 @@ GetRatioFromWorld (
 
 			if (PixelValueh.blue > Tolerencepx_blue || PixelValueh.green > Tolerencepx_green || PixelValueh.red > Tolerencepx_red)
 			{
-				ratioVF = (((double)InputWidthF - 2 * k) *  PixRatioNumF ) / ((double)InputHeightF *PixRatioDenF);
+				ratioVF = (((double)InputWidthF - 2 * (k+1)) *  PixRatioNumF ) / ((double)InputHeightF *PixRatioDenF);
 				k = halfWidthA - 1;
 				break;
 			}
