@@ -14,14 +14,19 @@ The plugin has some parameters :
 
 -In After Effect only, the plugin can detect the ratio of the target layer
 
-
+#Interface of the plugin
 ![Alt text](./docs/images/interface.PNG)
 
+
+#choose the ratio of the boxes
 ![Imgur Image](./docs/images/choose_size_of_the_letterbox.gif)
 
+#switch between ratio from the layer or the composition
 ![Imgur Image](./docs/images/comp_or_layer.gif)
 
-![Imgur Image](./docs/images/tranform layer behind letterbox.gif)
+#translate or resize the layer directly inside the plugin
+![Imgur Image](./docs/images/tranform_layer_behind_letterbox.gif)
 
+detect the ratio from an other layer (After Effect Only)
 ![Imgur Image](./docs/images/detect_boxsize_from_other_layer.gif)
  
