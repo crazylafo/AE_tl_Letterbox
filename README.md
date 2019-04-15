@@ -14,7 +14,7 @@ The plugin has some parameters :
 
 -In After Effect only, the plugin can detect the ratio of the target layer
 
-#Interface of the plugin
+# Interface of the plugin
 ![Alt text](./docs/images/interface.PNG)
 
 
