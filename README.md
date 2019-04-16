@@ -5,13 +5,13 @@ tl_letterbox is a Plugin for After Effect and Premiere that generates a letterbo
 The plugin has some parameters :
 - select the ratio a preset list or costum the value (from 0 to 10)
 
--change the color
+- change the color
 
--generate the letterbox on a transparent layer
+- generate the letterbox on a transparent layer
 
--Transform the picture begind the ratio (not andvaible in transparent mode)
+- Transform the picture begind the ratio (not andvaible in transparent mode)
 
--In After Effect only, the plugin can detect the ratio of the target layer
+- In After Effect only, the plugin can detect the ratio of the target layer
 
 # Interface of the plugin
 ![Alt text](./docs/images/interface.PNG)
